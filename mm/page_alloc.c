@@ -1871,6 +1871,12 @@ void prep_new_page(struct page *page, unsigned int order, gfp_t gfp_flags,
 	post_alloc_hook(page, order, gfp_flags);
 	set_page_refcounted(page);
 
+	if (IS_ENABLED(CONFIG_PAGE_SANITIZE_VERIFY) && want_init_on_free()) {
+		int i;
+		for (i = 0; i < (1 << order); i++)
+			verify_zero_highpage(page + i);
+	}
+
 	if (order && (gfp_flags & __GFP_COMP))
 		prep_compound_page(page, order);
 
