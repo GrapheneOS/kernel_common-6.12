@@ -304,7 +304,7 @@ static int proc_dohung_task_timeout_secs(const struct ctl_table *table, int writ
  * This is needed for proc_doulongvec_minmax of sysctl_hung_task_timeout_secs
  * and hung_task_check_interval_secs
  */
-static const unsigned long hung_task_timeout_max = (LONG_MAX / HZ);
+static const unsigned long hung_task_timeout_max __read_only = (LONG_MAX / HZ);
 static struct ctl_table hung_task_sysctls[] = {
 #ifdef CONFIG_SMP
 	{
