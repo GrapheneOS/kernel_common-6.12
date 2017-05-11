@@ -70,6 +70,7 @@
 #include <linux/rseq.h>
 #include <linux/ksm.h>
 #include <linux/dma-buf.h>
+#include <linux/random.h>
 
 #include <linux/uaccess.h>
 #include <asm/mmu_context.h>
@@ -296,6 +297,8 @@ static int __bprm_mm_init(struct linux_binprm *bprm)
 	mm->stack_vm = mm->total_vm = 1;
 	mmap_write_unlock(mm);
 	bprm->p = vma->vm_end - sizeof(void *);
+	if (!(current->personality & ADDR_NO_RANDOMIZE) && randomize_va_space)
+		bprm->p ^= get_random_u32() & ~PAGE_MASK;
 	return 0;
 err:
 	ksm_exit(mm);
