@@ -161,6 +161,13 @@ SYSCALL_DEFINE1(brk, unsigned long, brk)
 
 	newbrk = __PAGE_ALIGN(brk);
 	oldbrk = __PAGE_ALIGN(mm->brk);
+	/* properly handle unaligned min_brk as an empty heap */
+	if (min_brk & ~ __PAGE_MASK) {
+		if (brk == min_brk)
+			newbrk -= __PAGE_SIZE;
+		if (mm->brk == min_brk)
+			oldbrk -= __PAGE_SIZE;
+	}
 	if (oldbrk == newbrk) {
 		mm->brk = brk;
 		goto success;
