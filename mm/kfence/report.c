@@ -277,6 +277,7 @@ void kfence_report_error(unsigned long address, bool is_write, struct pt_regs *r
 
 	lockdep_on();
 
+	BUG_ON(IS_ENABLED(CONFIG_BUG_ON_DATA_CORRUPTION));
 	check_panic_on_warn("KFENCE");
 
 	/* We encountered a memory safety error, taint the kernel! */
