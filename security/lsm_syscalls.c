@@ -38,6 +38,8 @@ u64 lsm_name_to_attr(const char *name)
 		return LSM_ATTR_PREV;
 	if (!strcmp(name, "sockcreate"))
 		return LSM_ATTR_SOCKCREATE;
+	if (!strcmp(name, "selinux_flags"))
+		return LSM_ATTR_SELINUX_FLAGS;
 	return LSM_ATTR_UNDEF;
 }
 
