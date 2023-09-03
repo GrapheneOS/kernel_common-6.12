@@ -83,6 +83,7 @@ struct lsm_ctx {
 #define LSM_ATTR_KEYCREATE	103
 #define LSM_ATTR_PREV		104
 #define LSM_ATTR_SOCKCREATE	105
+#define LSM_ATTR_SELINUX_FLAGS 106
 
 /*
  * LSM_FLAG_XXX definitions identify special handling instructions
