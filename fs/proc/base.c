@@ -2927,6 +2927,7 @@ LSM_DIR_OPS(apparmor);
 
 static const struct pid_entry attr_dir_stuff[] = {
 	ATTR(LSM_ID_UNDEF, "current",	0666),
+	ATTR(LSM_ID_UNDEF, "selinux_flags",		0666),
 	ATTR(LSM_ID_UNDEF, "prev",		0444),
 	ATTR(LSM_ID_UNDEF, "exec",		0666),
 	ATTR(LSM_ID_UNDEF, "fscreate",	0666),
