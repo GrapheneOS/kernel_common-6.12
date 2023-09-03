@@ -43,6 +43,8 @@
 #include "objsec.h"
 #include "conditional.h"
 #include "ima.h"
+#include "ss/services.h"
+#include "ss/symtab.h"
 
 enum sel_inos {
 	SEL_ROOT_INO = 2,
@@ -568,6 +570,30 @@ out:
 	return ret;
 }
 
+static int resolve_context_type(struct selinux_load_state *lstate, const char *name, u32 *out_type)
+{
+	struct type_datum *typdatum = symtab_search(&lstate->policy->policydb.p_types, name);
+	if (!typdatum || typdatum->attribute) {
+		pr_err("SELinux: missing type_datum for %s\n", name);
+		return -EINVAL;
+	}
+	*out_type = typdatum->value;
+	return 0;
+}
+
+static int resolve_context_types(struct selinux_load_state *lstate, struct context_types *types) {
+	int rc;
+
+#define RESOLVE_TYPE(t) rc = resolve_context_type(lstate, #t, &types->t); if (rc) return rc
+
+	RESOLVE_TYPE(webview_zygote);
+	RESOLVE_TYPE(zygote);
+
+#undef RESOLVE_TYPE
+
+	return 0;
+}
+
 static ssize_t sel_write_load(struct file *file, const char __user *buf,
 			      size_t count, loff_t *ppos)
 
@@ -610,6 +636,12 @@ static ssize_t sel_write_load(struct file *file, const char __user *buf,
 	length = sel_make_policy_nodes(fsi, load_state.policy);
 	if (length) {
 		pr_warn_ratelimited("SELinux: failed to initialize selinuxfs\n");
+		selinux_policy_cancel(&load_state);
+		goto out;
+	}
+
+	length = resolve_context_types(&load_state, &selinux_state.types);
+	if (length) {
 		selinux_policy_cancel(&load_state);
 		goto out;
 	}
