@@ -89,6 +89,11 @@ extern int selinux_enabled_boot;
 
 struct selinux_policy;
 
+struct context_types {
+	u32 webview_zygote;
+	u32 zygote;
+};
+
 struct selinux_state {
 #ifdef CONFIG_SECURITY_SELINUX_DEVELOP
 	bool enforcing;
@@ -97,6 +102,8 @@ struct selinux_state {
 	bool policycap[__POLICYDB_CAP_MAX];
 	bool android_netlink_route;
 	bool android_netlink_getneigh;
+
+	struct context_types types;
 
 	struct page *status_page;
 	struct mutex status_lock;
