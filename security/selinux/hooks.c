@@ -2225,24 +2225,61 @@ static int selinux_binder_transfer_file(const struct cred *from,
 			    &ad);
 }
 
+static bool is_crash_dump_sid(u32 sid)
+{
+	u32 type;
+	if (security_sid_to_context_type(sid, &type)) {
+		return false;
+	}
+	return type == selinux_state.types.crash_dump;
+}
+
 static int selinux_ptrace_access_check(struct task_struct *child,
 				       unsigned int mode)
 {
-	u32 sid = current_sid();
+    const struct cred *cred = current_cred();
+	u32 sid = cred_sid(cred);
 	u32 csid = task_sid_obj(child);
+    int rc;
 
 	if (mode & PTRACE_MODE_READ)
 		return avc_has_perm(sid, csid, SECCLASS_FILE, FILE__READ,
 				NULL);
 
-	return avc_has_perm(sid, csid, SECCLASS_PROCESS, PROCESS__PTRACE,
+	rc = avc_has_perm(sid, csid, SECCLASS_PROCESS, PROCESS__PTRACE,
 			NULL);
+	if (!rc) {
+		if (cred_tsec_flags(cred) & TSEC_FLAG_DENY_PROCESS_PTRACE) {
+			// Exempt crash_dump binary from this restriction:
+			// crash_dump process is spawned as a child of crashed process and needs ptrace acccess to collect parent's
+			// stack trace.
+			// sepolicy of crash_dump domain allows ptrace access, but tsec_flags are inherited across fork()
+			if (!is_crash_dump_sid(sid)) {
+				audit_log_tsec_flag_denial(TSEC_FLAG_DENY_PROCESS_PTRACE, NULL);
+				return -EPERM;
+			}
+		}
+	}
+	return rc;
 }
 
 static int selinux_ptrace_traceme(struct task_struct *parent)
 {
-	return avc_has_perm(task_sid_obj(parent), task_sid_obj(current),
-			    SECCLASS_PROCESS, PROCESS__PTRACE, NULL);
+	const struct cred *cred = current_cred();
+	u32 sid = cred_sid(cred);
+
+	int rc = avc_has_perm(task_sid_obj(parent), sid,
+				SECCLASS_PROCESS, PROCESS__PTRACE, NULL);
+
+	if (!rc) {
+		if (cred_tsec_flags(cred) & TSEC_FLAG_DENY_PROCESS_PTRACE) {
+			audit_log_tsec_flag_denial_inner("TSEC_FLAG_DENY_PROCESS_PTRACE (ptrace_traceme)", NULL);
+			return -EPERM;
+		}
+	}
+
+	return rc;
+
 }
 
 static int selinux_capget(const struct task_struct *target, kernel_cap_t *effective,
