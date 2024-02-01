@@ -2497,7 +2497,6 @@
   uart_resume_port
   uart_set_options
   uart_suspend_port
-  uart_try_toggle_sysrq
   uart_unregister_driver
   uart_update_timeout
   uart_write_wakeup
