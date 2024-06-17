@@ -318,6 +318,7 @@
   __per_cpu_offset
   perf_trace_buf_alloc
   perf_trace_run_bpf_submit
+  pfn_is_map_memory
   platform_device_add
   platform_device_alloc
   platform_device_del
