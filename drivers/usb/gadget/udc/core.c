@@ -702,6 +702,8 @@ out:
 }
 EXPORT_SYMBOL_GPL(usb_gadget_vbus_disconnect);
 
+extern int deny_new_usb;
+
 static int usb_gadget_connect_locked(struct usb_gadget *gadget)
 	__must_hold(&gadget->udc->connect_lock)
 {
@@ -709,6 +711,12 @@ static int usb_gadget_connect_locked(struct usb_gadget *gadget)
 
 	if (!gadget->ops->pullup) {
 		ret = -EOPNOTSUPP;
+		goto out;
+	}
+
+	if (deny_new_usb) {
+		dev_err(&gadget->dev, "blocked USB gadget connection\n");
+		ret = -EPERM;
 		goto out;
 	}
 
