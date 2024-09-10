@@ -623,8 +623,11 @@ static ssize_t sel_write_load(struct file *file, const char __user *buf,
 
 	length = resolve_context_types(&load_state, &selinux_state.types);
 	if (length) {
+// don't cancel loading sepolicy because of missing context_types in microdroid sepolicy
+#if !IS_ENABLED(CONFIG_MICRODROID)
 		selinux_policy_cancel(&load_state);
 		goto out;
+#endif
 	}
 
 	selinux_policy_commit(&load_state);
