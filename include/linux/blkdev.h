@@ -776,7 +776,7 @@ static inline bool bio_needs_zone_write_plugging(struct bio *bio)
 	}
 }
 
-bool blk_zone_plug_bio(struct bio *bio, unsigned int nr_segs);
+bool blk_zone_plug_bio(struct bio *bio, unsigned int nr_segs, int rq_cpu);
 #else /* CONFIG_BLK_DEV_ZONED */
 static inline unsigned int disk_nr_zones(struct gendisk *disk)
 {
@@ -793,7 +793,8 @@ static inline bool bio_needs_zone_write_plugging(struct bio *bio)
 	return false;
 }
 
-static inline bool blk_zone_plug_bio(struct bio *bio, unsigned int nr_segs)
+static inline bool blk_zone_plug_bio(struct bio *bio, unsigned int nr_segs,
+				     int rq_cpu)
 {
 	return false;
 }
