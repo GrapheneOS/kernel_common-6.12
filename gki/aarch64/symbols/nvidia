@@ -3207,7 +3207,6 @@
   sysfs_update_group
   system_bh_wq
   system_cpucaps
-  system_entering_hibernation
   system_freezable_wq
   system_highpri_wq
   system_long_wq
