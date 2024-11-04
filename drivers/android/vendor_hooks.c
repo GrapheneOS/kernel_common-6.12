@@ -84,6 +84,7 @@
 #include <trace/hooks/rcu.h>
 #include <trace/hooks/dwc3.h>
 #include <trace/hooks/typec.h>
+#include <trace/hooks/cdc_ether.h>
 
 /*
  * Export tracepoints that act as a bare tracehook (ie: have no trace event
@@ -734,3 +735,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_skip_cma);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_delay_schedule);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_task_fork);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_task_exit);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_is_rndis_enabled);
