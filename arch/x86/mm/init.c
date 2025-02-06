@@ -818,6 +818,7 @@ void __init init_mem_mapping(void)
 
 	x86_init.hyper.init_mem_mapping();
 
+	early_memzero(0, max_pfn_mapped << PAGE_SHIFT);
 	early_memtest(0, max_pfn_mapped << PAGE_SHIFT);
 }
 
