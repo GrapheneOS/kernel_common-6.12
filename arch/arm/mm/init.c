@@ -209,6 +209,8 @@ void __init bootmem_init(void)
 
 	find_limits(&min_low_pfn, &max_low_pfn, &max_pfn);
 
+	early_memzero((phys_addr_t)min_low_pfn << PAGE_SHIFT,
+		      (phys_addr_t)max_low_pfn << PAGE_SHIFT);
 	early_memtest((phys_addr_t)min_low_pfn << PAGE_SHIFT,
 		      (phys_addr_t)max_low_pfn << PAGE_SHIFT);
 
