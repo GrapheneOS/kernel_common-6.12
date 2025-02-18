@@ -4359,6 +4359,7 @@ void vma_pgtable_walk_begin(struct vm_area_struct *vma);
 void vma_pgtable_walk_end(struct vm_area_struct *vma);
 
 int reserve_mem_find_by_name(const char *name, phys_addr_t *start, phys_addr_t *size);
+int reserve_mem_release_by_name(const char *name);
 
 void zone_pageset_high_and_batch_update(struct zone *zone, int new_high_min,
 					int new_high_max, int new_batch);
