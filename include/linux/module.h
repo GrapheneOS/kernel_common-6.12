@@ -783,6 +783,8 @@ static inline bool is_livepatch_module(struct module *mod)
 
 void set_module_sig_enforced(void);
 
+void module_for_each_mod(int(*func)(struct module *mod, void *data), void *data);
+
 #else /* !CONFIG_MODULES... */
 
 static inline struct module *__module_address(unsigned long addr)
@@ -889,6 +891,10 @@ void *dereference_module_function_descriptor(struct module *mod, void *ptr)
 static inline bool module_is_coming(struct module *mod)
 {
 	return false;
+}
+
+static inline void module_for_each_mod(int(*func)(struct module *mod, void *data), void *data)
+{
 }
 #endif /* CONFIG_MODULES */
 
