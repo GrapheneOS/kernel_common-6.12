@@ -9237,7 +9237,7 @@ allocate_trace_buffer(struct trace_array *tr, struct array_buffer *buf, int size
 	if (tr->range_addr_start && tr->range_addr_size) {
 		buf->buffer = ring_buffer_alloc_range(size, rb_flags, get_order(__PAGE_SIZE),
 						      tr->range_addr_start,
-						      tr->range_addr_size);
+						      tr->range_addr_size, 0);
 
 #ifdef CONFIG_RANDOMIZE_BASE
 		if (ring_buffer_last_boot_delta(buf->buffer, &tr->kaslr_addr))
