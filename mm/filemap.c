@@ -3301,7 +3301,8 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 		if (!(vm_flags & VM_RAND_READ))
 			ra->size *= 2;
 		ra->async_size = HPAGE_PMD_NR;
-		page_cache_ra_order(&ractl, ra, HPAGE_PMD_ORDER);
+		ra_mmap_miss->order = HPAGE_PMD_ORDER;
+		page_cache_ra_order(&ractl, ra);
 		return fpin;
 	}
 #endif
@@ -3340,12 +3341,13 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	ra->start = max_t(long, 0, vmf->pgoff - ra->ra_pages / 2);
 	ra->size = ra->ra_pages;
 	ra->async_size = ra->ra_pages / 4;
+	ra_mmap_miss->order = 0;
 	trace_android_vh_tune_mmap_readaround(ra->ra_pages, vmf->pgoff,
 			&ra->start, &ra->size, &ra->async_size);
 	ractl._index = ra->start;
 	trace_android_vh_page_cache_readahead_start(file, vmf->pgoff,
 			ra->size, true);
-	page_cache_ra_order(&ractl, ra, 0);
+	page_cache_ra_order(&ractl, ra);
 	trace_android_vh_page_cache_readahead_end(file, vmf->pgoff);
 	return fpin;
 }

@@ -390,8 +390,7 @@ void unmap_page_range(struct mmu_gather *tlb,
 int folio_unmap_invalidate(struct address_space *mapping, struct folio *folio,
 			   gfp_t gfp);
 
-void page_cache_ra_order(struct readahead_control *, struct file_ra_state *,
-		unsigned int order);
+void page_cache_ra_order(struct readahead_control *, struct file_ra_state *);
 void force_page_cache_ra(struct readahead_control *, unsigned long nr);
 static inline void force_page_cache_readahead(struct address_space *mapping,
 		struct file *file, pgoff_t index, unsigned long nr_to_read)
