@@ -649,6 +649,22 @@ int get_dmabuf_debugfs_data(int (*fn)(const struct dma_buf *, void *),
 #endif
 
 /**
+ * struct task_dma_buf_record - Holds the number of (VMA and FD) references to a
+ * dmabuf by a collection of tasks that share both mm_struct and files_struct.
+ * This is the list entry type for @task_dma_buf_info dmabufs list.
+ *
+ * @node: Stores the list this record is on.
+ * @dmabuf: The dmabuf this record is for.
+ * @refcnt: The number of VMAs and FDs that reference @dmabuf by the tasks that
+ *          share this record.
+ */
+struct task_dma_buf_record {
+	struct list_head node;
+	struct dma_buf *dmabuf;
+	unsigned long refcnt;
+};
+
+/**
  * DEFINE_DMA_BUF_EXPORT_INFO - helper macro for exporters
  * @name: export-info name
  *
