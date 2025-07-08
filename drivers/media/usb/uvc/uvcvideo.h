@@ -589,8 +589,8 @@ struct uvc_device {
 	struct mutex lock;		/* Protects users */
 	unsigned int users;
 
-	/* Zero-ended list of meta formats */
-	u32 meta_formats[UVC_MAX_META_DATA_FORMATS + 1];
+	u32 meta_formats[UVC_MAX_META_DATA_FORMATS];
+	unsigned int nmeta_formats;
 
 	atomic_t nmappings;
 
