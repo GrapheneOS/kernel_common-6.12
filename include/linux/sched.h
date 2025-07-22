@@ -81,6 +81,7 @@ struct seq_file;
 struct sighand_struct;
 struct signal_struct;
 struct task_delay_info;
+struct task_dma_buf_info;
 struct task_group;
 struct task_struct;
 struct user_event_mm;
@@ -1656,6 +1657,8 @@ struct task_struct {
 #ifdef CONFIG_USER_EVENTS
 	struct user_event_mm		*user_event_mm;
 #endif
+
+	struct task_dma_buf_info *dmabuf_info;
 
 	/*
 	 * New fields for task_struct should be added above here, so that
