@@ -41,6 +41,8 @@
 #include <trace/hooks/dmabuf.h>
 #include <linux/android_kabi.h>
 
+DEFINE_STATIC_KEY_TRUE(dmabuf_accounting_key);
+
 static DEFINE_MUTEX(dmabuf_list_mutex);
 static LIST_HEAD(dmabuf_list);
 
@@ -399,6 +401,9 @@ int dma_buf_account_task(struct dma_buf *dmabuf, struct task_dma_buf_info *dmabu
 {
 	struct task_dma_buf_record *rec;
 
+	if (!static_key_enabled(&dmabuf_accounting_key))
+		return 0;
+
 	if (!dmabuf_info)
 		return 0;
 
@@ -434,6 +439,9 @@ int dma_buf_account_task(struct dma_buf *dmabuf, struct task_dma_buf_info *dmabu
 void dma_buf_unaccount_task(struct dma_buf *dmabuf, struct task_dma_buf_info *dmabuf_info)
 {
 	struct task_dma_buf_record *rec;
+
+	if (!static_key_enabled(&dmabuf_accounting_key))
+		return;
 
 	if (!dmabuf_info)
 		return;
@@ -543,6 +551,9 @@ int copy_dmabuf_info(u64 clone_flags, struct task_struct *task)
 	struct task_dma_buf_info *child_dmabuf_info;
 	bool share_vm = clone_flags & CLONE_VM;
 	bool share_fs = clone_flags & CLONE_FILES;
+
+	if (!static_key_enabled(&dmabuf_accounting_key))
+		return 0;
 
 	/* kthreads are not supported */
 	if (task->flags & PF_KTHREAD) {
@@ -2371,6 +2382,24 @@ static inline void dma_buf_uninit_debugfs(void)
 {
 }
 #endif
+
+static int __init setup_early_dmabuf_accounting(char *str)
+{
+	bool enable;
+
+	if (kstrtobool(str, &enable))
+		return -EINVAL;
+
+	if (enable != static_key_enabled(&dmabuf_accounting_key)) {
+		if (enable)
+			static_branch_enable(&dmabuf_accounting_key);
+		else
+			static_branch_disable(&dmabuf_accounting_key);
+	}
+
+	return 0;
+}
+early_param("dmabuf_accounting", setup_early_dmabuf_accounting);
 
 static int __init dma_buf_init(void)
 {
