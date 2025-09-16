@@ -82,8 +82,6 @@ _COMMON_GKI_MODULES_LIST = [
     "net/mac802154/mac802154.ko",
     "net/nfc/nfc.ko",
     "net/rfkill/rfkill.ko",
-    "net/tipc/tipc.ko",
-    "net/tipc/tipc_diag.ko",
     "net/tls/tls.ko",
     "net/vmw_vsock/vmw_vsock_virtio_transport.ko",
 ]
@@ -115,6 +113,8 @@ _X86_64_GKI_MODULES_LIST = [
     # keep sorted
     "drivers/android/binder/rust_binder.ko",
     "drivers/ptp/ptp_kvm.ko",
+    "net/tipc/tipc.ko",
+    "net/tipc/tipc_diag.ko",
 ]
 
 # buildifier: disable=unnamed-macro
