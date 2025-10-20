@@ -617,21 +617,6 @@ static bool range_is_memory(u64 start, u64 end)
 	return is_in_mem_range(end - 1, &r);
 }
 
-static bool range_is_allowed_memory(u64 start, u64 end)
-{
-	struct memblock_region *reg;
-	struct kvm_mem_range range;
-
-	reg = find_mem_range(start, &range);
-	if (!reg)
-		return false;
-
-	if (!is_in_mem_range(end - 1, &range))
-		return false;
-
-	return !(reg->flags & MEMBLOCK_NOMAP);
-}
-
 static inline int __host_stage2_idmap(u64 start, u64 end,
 				      enum kvm_pgtable_prot prot,
 				      bool update_iommu)
@@ -1123,11 +1108,12 @@ static int __guest_check_page_state_range(struct pkvm_hyp_vcpu *vcpu, u64 addr,
 }
 
 struct guest_request_walker_data {
-	unsigned long		ipa_start;
-	kvm_pte_t		pte_start;
+	union {
+		kvm_pte_t		pte_start; /* guest_request_walker() */
+		unsigned long		ipa_start; /* guest_request_ioguard_walker() */
+	};
 	u64			size;
 	enum pkvm_page_state	desired_state;
-	enum pkvm_page_state	desired_mask;
 	int			max_ptes;
 };
 
@@ -1135,7 +1121,6 @@ struct guest_request_walker_data {
 {							\
 	.size		= 0,				\
 	.desired_state	= __state,			\
-	.desired_mask	= ~0,				\
 	/*						\
 	 * Arbitrary limit of walked PTEs to restrict	\
 	 * the time spent at EL2			\
@@ -1149,19 +1134,28 @@ static int guest_request_walker(const struct kvm_pgtable_visit_ctx *ctx,
 	struct guest_request_walker_data *data = (struct guest_request_walker_data *)ctx->arg;
 	enum pkvm_page_state state;
 	kvm_pte_t pte = *ctx->ptep;
-	phys_addr_t phys = kvm_pte_to_phys(pte);
-	u32 level = ctx->level;
+	phys_addr_t phys;
+	u64 granule_size;
 
 	state = guest_get_page_state(pte, 0);
-	if (data->desired_state != (state & data->desired_mask))
-		return (state & PKVM_NOPAGE) ? -EFAULT : -EPERM;
+	if (data->desired_state != state)
+		return (state == PKVM_NOPAGE) ? -EFAULT : -EPERM;
 
-	data->max_ptes--;
+	/* state != PKVM_NOPAGE but invalid PTE? */
+	if (WARN_ON(!kvm_pte_valid(pte)))
+		return -EINVAL;
 
+	granule_size = kvm_granule_size(ctx->level);
+	phys = kvm_pte_to_phys(pte);
+
+	/* First PTE */
 	if (!data->size) {
+		/* Request starts in the middle of a huge-mapping */
+		if (!IS_ALIGNED(ctx->start, granule_size))
+			return -E2BIG;
+
 		data->pte_start = pte;
-		data->size = kvm_granule_size(level);
-		data->ipa_start = ctx->addr & ~(kvm_granule_size(level) - 1);
+		data->size = granule_size;
 
 		goto end;
 	}
@@ -1171,14 +1165,17 @@ static int guest_request_walker(const struct kvm_pgtable_visit_ctx *ctx,
 		return -EINVAL;
 
 	/* Can only describe physically contiguous mappings */
-	if (kvm_pte_valid(data->pte_start) &&
-	    (phys != kvm_pte_to_phys(data->pte_start) + data->size))
-			return -E2BIG;
+	if ((phys != kvm_pte_to_phys(data->pte_start) + data->size))
+		return -ERANGE;
 
-	data->size += kvm_granule_size(level);
+	data->size += granule_size;
 
 end:
-	return --data->max_ptes > 0 ? 0 : -E2BIG;
+	/* Request ends in the middle of a huge-mapping */
+	if (ctx->start + data->size > ctx->end)
+		return -E2BIG;
+
+	return --data->max_ptes > 0 ? 0 : -ERANGE;
 }
 
 static int __guest_request_page_transition(u64 ipa, kvm_pte_t *__pte, u64 *__nr_pages,
@@ -1192,12 +1189,21 @@ static int __guest_request_page_transition(u64 ipa, kvm_pte_t *__pte, u64 *__nr_
 		.flags  = KVM_PGTABLE_WALK_LEAF,
 		.arg    = (void *)&data,
 	};
-	phys_addr_t phys, phys_offset;
-	kvm_pte_t pte;
-	int ret = kvm_pgtable_walk(&vm->pgt, ipa, *__nr_pages * PAGE_SIZE, &walker);
+	phys_addr_t phys;
+	size_t size;
+	int ret;
 
-	/* Walker reached data.max_ptes or a non physically contiguous block */
-	if (ret == -E2BIG)
+	if (check_mul_overflow(*__nr_pages, PAGE_SIZE, &size) ||
+	    ipa >= ipa + size)
+		return -EINVAL;
+
+	ret = kvm_pgtable_walk(&vm->pgt, ipa, size, &walker);
+	/*
+	 * Walker reached data.max_ptes or a non-physically-contiguous mapping.
+	 * Proceed with the current valid region. The guest will have to issue a new call for the
+	 * leftover.
+	 */
+	if (ret == -ERANGE)
 		ret = 0;
 	else if (ret)
 		return ret;
@@ -1206,39 +1212,12 @@ static int __guest_request_page_transition(u64 ipa, kvm_pte_t *__pte, u64 *__nr_
 		return -EINVAL;
 
 	phys = kvm_pte_to_phys(data.pte_start);
-	if (!range_is_allowed_memory(phys, phys + data.size))
-		return -EINVAL;
+	ret = check_range_allowed_memory(phys, phys + data.size);
+	if (ret)
+		return ret;
 
-	if (data.ipa_start > ipa)
-		return -EINVAL;
-
-	/*
-	 * transition not aligned with block memory mapping. They'll be broken
-	 * down and memory donation will be needed.
-	 */
-	phys_offset = ipa - data.ipa_start;
-	if (phys_offset || (*__nr_pages * PAGE_SIZE < data.size)) {
-		struct pkvm_hyp_vcpu *hyp_vcpu = pkvm_get_loaded_hyp_vcpu();
-		int min_pages;
-
-		if (WARN_ON(!hyp_vcpu))
-			return -EINVAL;
-
-		min_pages = kvm_mmu_cache_min_pages(&hyp_vcpu->vcpu.kvm->arch.mmu);
-		if (hyp_vcpu->vcpu.arch.stage2_mc.nr_pages < min_pages)
-			return -ENOMEM;
-	}
-
-	phys = kvm_pte_to_phys(data.pte_start) + phys_offset;
-	pte = data.pte_start & ~kvm_phys_to_pte(KVM_PHYS_INVALID);
-	pte |= kvm_phys_to_pte(phys);
-
-	if (WARN_ON(phys_offset >= data.size))
-		return -EINVAL;
-
-	*__pte = pte;
-	*__nr_pages = min_t(u64, (data.size - phys_offset) >> PAGE_SHIFT,
-			    *__nr_pages);
+	*__pte = data.pte_start;
+	*__nr_pages = data.size >> PAGE_SHIFT;
 
 	return 0;
 }
@@ -2588,16 +2567,41 @@ static bool __check_ioguard_page(struct pkvm_hyp_vcpu *hyp_vcpu, u64 ipa)
 		pte == KVM_INVALID_PTE_MMIO_NOTE);
 }
 
+static int guest_request_ioguard_walker(const struct kvm_pgtable_visit_ctx *ctx,
+					enum kvm_pgtable_walk_flags visit)
+{
+
+	struct guest_request_walker_data *data = (struct guest_request_walker_data *)ctx->arg;
+	enum pkvm_page_state state;
+	kvm_pte_t pte = *ctx->ptep;
+	u64 granule_size;
+
+	state = guest_get_page_state(pte, 0);
+	if (state != PKVM_MMIO && state != PKVM_NOPAGE)
+		return -EPERM;
+
+	granule_size = kvm_granule_size(ctx->level);
+
+	/* First PTE */
+	if (!data->size)
+		data->ipa_start = ctx->addr & ~(granule_size - 1);
+
+	data->size += granule_size;
+
+	return --data->max_ptes > 0 ? 0 : -ERANGE;
+}
+
 int __pkvm_install_ioguard_page(struct pkvm_hyp_vcpu *hyp_vcpu, u64 ipa,
 				u64 nr_pages, u64 *nr_guarded)
 {
 	struct guest_request_walker_data data = GUEST_WALKER_DATA_INIT(PKVM_NOPAGE);
 	struct pkvm_hyp_vm *vm = pkvm_hyp_vcpu_to_hyp_vm(hyp_vcpu);
 	struct kvm_pgtable_walker walker = {
-		.cb     = guest_request_walker,
+		.cb     = guest_request_ioguard_walker,
 		.flags  = KVM_PGTABLE_WALK_LEAF,
 		.arg    = (void *)&data,
 	};
+	u64 end;
 	int ret;
 
 	if (!test_bit(KVM_ARCH_FLAG_MMIO_GUARD, &vm->kvm.arch.flags))
@@ -2608,21 +2612,21 @@ int __pkvm_install_ioguard_page(struct pkvm_hyp_vcpu *hyp_vcpu, u64 ipa,
 
 	guest_lock_component(vm);
 
-	/* Check we either have NOMAP or NOMAP|MMIO in this range */
-	data.desired_mask = ~PKVM_MMIO;
-
 	ret = kvm_pgtable_walk(&vm->pgt, ipa, nr_pages << PAGE_SHIFT, &walker);
 	/* Walker reached data.max_ptes */
-	if (ret == -E2BIG)
+	if (ret == -ERANGE)
 		ret = 0;
 	else if (ret)
 		goto unlock;
 
-	/*
-	 * Intersection between the requested region and what has been verified
-	 */
-	*nr_guarded = nr_pages = min_t(u64, data.size >> PAGE_SHIFT, nr_pages);
-	ret = kvm_pgtable_stage2_annotate(&vm->pgt, ipa, nr_pages << PAGE_SHIFT,
+	/* Intersection between the requested region and what has been verified */
+	end = min(ipa + (nr_pages << PAGE_SHIFT), data.ipa_start + data.size);
+	if (ipa >= end) {
+		ret = -EINVAL;
+		goto unlock;
+	}
+
+	ret = kvm_pgtable_stage2_annotate(&vm->pgt, ipa, end - ipa,
 					  &hyp_vcpu->vcpu.arch.stage2_mc,
 					  KVM_INVALID_PTE_MMIO_NOTE);
 
