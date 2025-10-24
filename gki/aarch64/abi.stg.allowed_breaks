@@ -79,3 +79,13 @@ type 'struct inet_connection_sock' changed
         offset changed from 60 to 61
         bit-field size changed from 4 to 3
 
+type 'struct kvm_iommu_ops' changed
+  member 'u64 __kabi_reserved2' was removed
+  member 'u64 __kabi_reserved3' was removed
+  member 'u64 __kabi_reserved4' was removed
+  member 'u64 __kabi_reserved5' was removed
+  member 'union { int(* attach_dev_nested)(struct kvm_hyp_iommu*, struct kvm_hyp_iommu_domain*, struct kvm_hyp_iommu_domain*, u32, u32, unsigned long, void*, size_t); struct { u64 __kabi_reserved2; }; union { }; }' was added
+  member 'union { int(* detach_dev_nested)(struct kvm_hyp_iommu*, struct kvm_hyp_iommu_domain*, struct kvm_hyp_iommu_domain*, u32, u32); struct { u64 __kabi_reserved3; }; union { }; }' was added
+  member 'union { void(* iotlb_inv_nested_domain)(struct kvm_hyp_iommu_domain*, unsigned long, size_t, size_t, bool); struct { u64 __kabi_reserved4; }; union { }; }' was added
+  member 'union { int(* nested_cfg_sync)(struct kvm_hyp_iommu*, void*, size_t); struct { u64 __kabi_reserved5; }; union { }; }' was added
+
