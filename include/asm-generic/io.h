@@ -75,7 +75,6 @@
 #if IS_ENABLED(CONFIG_TRACE_MMIO_ACCESS) && !(defined(__DISABLE_TRACE_MMIO__))
 #include <linux/tracepoint-defs.h>
 
-#define rwmmio_tracepoint_enabled(tracepoint) tracepoint_enabled(tracepoint)
 DECLARE_TRACEPOINT(rwmmio_write);
 DECLARE_TRACEPOINT(rwmmio_post_write);
 DECLARE_TRACEPOINT(rwmmio_read);
@@ -92,7 +91,6 @@ void log_post_read_mmio(u64 val, u8 width, const volatile void __iomem *addr,
 
 #else
 
-#define rwmmio_tracepoint_enabled(tracepoint) false
 static inline void log_write_mmio(u64 val, u8 width, volatile void __iomem *addr,
 				  unsigned long caller_addr, unsigned long caller_addr0) {}
 static inline void log_post_write_mmio(u64 val, u8 width, volatile void __iomem *addr,
@@ -191,13 +189,11 @@ static inline u8 readb(const volatile void __iomem *addr)
 {
 	u8 val;
 
-	if (rwmmio_tracepoint_enabled(rwmmio_read))
-		log_read_mmio(8, addr, _THIS_IP_, _RET_IP_);
+	log_read_mmio(8, addr, _THIS_IP_, _RET_IP_);
 	__io_br();
 	val = __raw_readb(addr);
 	__io_ar(val);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_read))
-		log_post_read_mmio(val, 8, addr, _THIS_IP_, _RET_IP_);
+	log_post_read_mmio(val, 8, addr, _THIS_IP_, _RET_IP_);
 	return val;
 }
 #endif
@@ -208,13 +204,11 @@ static inline u16 readw(const volatile void __iomem *addr)
 {
 	u16 val;
 
-	if (rwmmio_tracepoint_enabled(rwmmio_read))
-		log_read_mmio(16, addr, _THIS_IP_, _RET_IP_);
+	log_read_mmio(16, addr, _THIS_IP_, _RET_IP_);
 	__io_br();
 	val = __le16_to_cpu((__le16 __force)__raw_readw(addr));
 	__io_ar(val);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_read))
-		log_post_read_mmio(val, 16, addr, _THIS_IP_, _RET_IP_);
+	log_post_read_mmio(val, 16, addr, _THIS_IP_, _RET_IP_);
 	return val;
 }
 #endif
@@ -225,13 +219,11 @@ static inline u32 readl(const volatile void __iomem *addr)
 {
 	u32 val;
 
-	if (rwmmio_tracepoint_enabled(rwmmio_read))
-		log_read_mmio(32, addr, _THIS_IP_, _RET_IP_);
+	log_read_mmio(32, addr, _THIS_IP_, _RET_IP_);
 	__io_br();
 	val = __le32_to_cpu((__le32 __force)__raw_readl(addr));
 	__io_ar(val);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_read))
-		log_post_read_mmio(val, 32, addr, _THIS_IP_, _RET_IP_);
+	log_post_read_mmio(val, 32, addr, _THIS_IP_, _RET_IP_);
 	return val;
 }
 #endif
@@ -243,13 +235,11 @@ static inline u64 readq(const volatile void __iomem *addr)
 {
 	u64 val;
 
-	if (rwmmio_tracepoint_enabled(rwmmio_read))
-		log_read_mmio(64, addr, _THIS_IP_, _RET_IP_);
+	log_read_mmio(64, addr, _THIS_IP_, _RET_IP_);
 	__io_br();
 	val = __le64_to_cpu((__le64 __force)__raw_readq(addr));
 	__io_ar(val);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_read))
-		log_post_read_mmio(val, 64, addr, _THIS_IP_, _RET_IP_);
+	log_post_read_mmio(val, 64, addr, _THIS_IP_, _RET_IP_);
 	return val;
 }
 #endif
@@ -259,13 +249,11 @@ static inline u64 readq(const volatile void __iomem *addr)
 #define writeb writeb
 static inline void writeb(u8 value, volatile void __iomem *addr)
 {
-	if (rwmmio_tracepoint_enabled(rwmmio_write))
-		log_write_mmio(value, 8, addr, _THIS_IP_, _RET_IP_);
+	log_write_mmio(value, 8, addr, _THIS_IP_, _RET_IP_);
 	__io_bw();
 	__raw_writeb(value, addr);
 	__io_aw();
-	if (rwmmio_tracepoint_enabled(rwmmio_post_write))
-		log_post_write_mmio(value, 8, addr, _THIS_IP_, _RET_IP_);
+	log_post_write_mmio(value, 8, addr, _THIS_IP_, _RET_IP_);
 }
 #endif
 
@@ -273,13 +261,11 @@ static inline void writeb(u8 value, volatile void __iomem *addr)
 #define writew writew
 static inline void writew(u16 value, volatile void __iomem *addr)
 {
-	if (rwmmio_tracepoint_enabled(rwmmio_write))
-		log_write_mmio(value, 16, addr, _THIS_IP_, _RET_IP_);
+	log_write_mmio(value, 16, addr, _THIS_IP_, _RET_IP_);
 	__io_bw();
 	__raw_writew((u16 __force)cpu_to_le16(value), addr);
 	__io_aw();
-	if (rwmmio_tracepoint_enabled(rwmmio_post_write))
-		log_post_write_mmio(value, 16, addr, _THIS_IP_, _RET_IP_);
+	log_post_write_mmio(value, 16, addr, _THIS_IP_, _RET_IP_);
 }
 #endif
 
@@ -287,13 +273,11 @@ static inline void writew(u16 value, volatile void __iomem *addr)
 #define writel writel
 static inline void writel(u32 value, volatile void __iomem *addr)
 {
-	if (rwmmio_tracepoint_enabled(rwmmio_write))
-		log_write_mmio(value, 32, addr, _THIS_IP_, _RET_IP_);
+	log_write_mmio(value, 32, addr, _THIS_IP_, _RET_IP_);
 	__io_bw();
 	__raw_writel((u32 __force)__cpu_to_le32(value), addr);
 	__io_aw();
-	if (rwmmio_tracepoint_enabled(rwmmio_post_write))
-		log_post_write_mmio(value, 32, addr, _THIS_IP_, _RET_IP_);
+	log_post_write_mmio(value, 32, addr, _THIS_IP_, _RET_IP_);
 }
 #endif
 
@@ -302,13 +286,11 @@ static inline void writel(u32 value, volatile void __iomem *addr)
 #define writeq writeq
 static inline void writeq(u64 value, volatile void __iomem *addr)
 {
-	if (rwmmio_tracepoint_enabled(rwmmio_write))
-		log_write_mmio(value, 64, addr, _THIS_IP_, _RET_IP_);
+	log_write_mmio(value, 64, addr, _THIS_IP_, _RET_IP_);
 	__io_bw();
 	__raw_writeq((u64 __force)__cpu_to_le64(value), addr);
 	__io_aw();
-	if (rwmmio_tracepoint_enabled(rwmmio_post_write))
-		log_post_write_mmio(value, 64, addr, _THIS_IP_, _RET_IP_);
+	log_post_write_mmio(value, 64, addr, _THIS_IP_, _RET_IP_);
 }
 #endif
 #endif /* CONFIG_64BIT */
@@ -324,11 +306,9 @@ static inline u8 readb_relaxed(const volatile void __iomem *addr)
 {
 	u8 val;
 
-	if (rwmmio_tracepoint_enabled(rwmmio_read))
-		log_read_mmio(8, addr, _THIS_IP_, _RET_IP_);
+	log_read_mmio(8, addr, _THIS_IP_, _RET_IP_);
 	val = __raw_readb(addr);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_read))
-		log_post_read_mmio(val, 8, addr, _THIS_IP_, _RET_IP_);
+	log_post_read_mmio(val, 8, addr, _THIS_IP_, _RET_IP_);
 	return val;
 }
 #endif
@@ -339,11 +319,9 @@ static inline u16 readw_relaxed(const volatile void __iomem *addr)
 {
 	u16 val;
 
-	if (rwmmio_tracepoint_enabled(rwmmio_read))
-		log_read_mmio(16, addr, _THIS_IP_, _RET_IP_);
+	log_read_mmio(16, addr, _THIS_IP_, _RET_IP_);
 	val = __le16_to_cpu((__le16 __force)__raw_readw(addr));
-	if (rwmmio_tracepoint_enabled(rwmmio_post_read))
-		log_post_read_mmio(val, 16, addr, _THIS_IP_, _RET_IP_);
+	log_post_read_mmio(val, 16, addr, _THIS_IP_, _RET_IP_);
 	return val;
 }
 #endif
@@ -354,11 +332,9 @@ static inline u32 readl_relaxed(const volatile void __iomem *addr)
 {
 	u32 val;
 
-	if (rwmmio_tracepoint_enabled(rwmmio_read))
-		log_read_mmio(32, addr, _THIS_IP_, _RET_IP_);
+	log_read_mmio(32, addr, _THIS_IP_, _RET_IP_);
 	val = __le32_to_cpu((__le32 __force)__raw_readl(addr));
-	if (rwmmio_tracepoint_enabled(rwmmio_post_read))
-		log_post_read_mmio(val, 32, addr, _THIS_IP_, _RET_IP_);
+	log_post_read_mmio(val, 32, addr, _THIS_IP_, _RET_IP_);
 	return val;
 }
 #endif
@@ -369,11 +345,9 @@ static inline u64 readq_relaxed(const volatile void __iomem *addr)
 {
 	u64 val;
 
-	if (rwmmio_tracepoint_enabled(rwmmio_read))
-		log_read_mmio(64, addr, _THIS_IP_, _RET_IP_);
+	log_read_mmio(64, addr, _THIS_IP_, _RET_IP_);
 	val = __le64_to_cpu((__le64 __force)__raw_readq(addr));
-	if (rwmmio_tracepoint_enabled(rwmmio_post_read))
-		log_post_read_mmio(val, 64, addr, _THIS_IP_, _RET_IP_);
+	log_post_read_mmio(val, 64, addr, _THIS_IP_, _RET_IP_);
 	return val;
 }
 #endif
@@ -382,11 +356,9 @@ static inline u64 readq_relaxed(const volatile void __iomem *addr)
 #define writeb_relaxed writeb_relaxed
 static inline void writeb_relaxed(u8 value, volatile void __iomem *addr)
 {
-	if (rwmmio_tracepoint_enabled(rwmmio_write))
-		log_write_mmio(value, 8, addr, _THIS_IP_, _RET_IP_);
+	log_write_mmio(value, 8, addr, _THIS_IP_, _RET_IP_);
 	__raw_writeb(value, addr);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_write))
-		log_post_write_mmio(value, 8, addr, _THIS_IP_, _RET_IP_);
+	log_post_write_mmio(value, 8, addr, _THIS_IP_, _RET_IP_);
 }
 #endif
 
@@ -394,11 +366,9 @@ static inline void writeb_relaxed(u8 value, volatile void __iomem *addr)
 #define writew_relaxed writew_relaxed
 static inline void writew_relaxed(u16 value, volatile void __iomem *addr)
 {
-	if (rwmmio_tracepoint_enabled(rwmmio_write))
-		log_write_mmio(value, 16, addr, _THIS_IP_, _RET_IP_);
+	log_write_mmio(value, 16, addr, _THIS_IP_, _RET_IP_);
 	__raw_writew((u16 __force)cpu_to_le16(value), addr);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_write))
-		log_post_write_mmio(value, 16, addr, _THIS_IP_, _RET_IP_);
+	log_post_write_mmio(value, 16, addr, _THIS_IP_, _RET_IP_);
 }
 #endif
 
@@ -406,11 +376,9 @@ static inline void writew_relaxed(u16 value, volatile void __iomem *addr)
 #define writel_relaxed writel_relaxed
 static inline void writel_relaxed(u32 value, volatile void __iomem *addr)
 {
-	if (rwmmio_tracepoint_enabled(rwmmio_write))
-		log_write_mmio(value, 32, addr, _THIS_IP_, _RET_IP_);
+	log_write_mmio(value, 32, addr, _THIS_IP_, _RET_IP_);
 	__raw_writel((u32 __force)__cpu_to_le32(value), addr);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_write))
-		log_post_write_mmio(value, 32, addr, _THIS_IP_, _RET_IP_);
+	log_post_write_mmio(value, 32, addr, _THIS_IP_, _RET_IP_);
 }
 #endif
 
@@ -418,11 +386,9 @@ static inline void writel_relaxed(u32 value, volatile void __iomem *addr)
 #define writeq_relaxed writeq_relaxed
 static inline void writeq_relaxed(u64 value, volatile void __iomem *addr)
 {
-	if (rwmmio_tracepoint_enabled(rwmmio_write))
-		log_write_mmio(value, 64, addr, _THIS_IP_, _RET_IP_);
+	log_write_mmio(value, 64, addr, _THIS_IP_, _RET_IP_);
 	__raw_writeq((u64 __force)__cpu_to_le64(value), addr);
-	if (rwmmio_tracepoint_enabled(rwmmio_post_write))
-		log_post_write_mmio(value, 64, addr, _THIS_IP_, _RET_IP_);
+	log_post_write_mmio(value, 64, addr, _THIS_IP_, _RET_IP_);
 }
 #endif
 
