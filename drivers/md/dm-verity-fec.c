@@ -188,9 +188,11 @@ error:
 	if (r < 0 && neras)
 		DMERR_LIMIT("%s: FEC %llu: failed to correct: %d",
 			    v->data_dev->name, (unsigned long long)rsb, r);
-	else if (r > 0)
+	else if (r > 0) {
 		DMWARN_LIMIT("%s: FEC %llu: corrected %d errors",
 			     v->data_dev->name, (unsigned long long)rsb, r);
+		atomic64_inc(verity_fec_corrected(v));
+	}
 
 	return r;
 }
@@ -649,14 +651,14 @@ int verity_fec_parse_opt_args(struct dm_arg_set *as, struct dm_verity *v,
  */
 int verity_fec_ctr_alloc(struct dm_verity *v)
 {
-	struct dm_verity_fec *f;
+	struct dm_verity_fec_ex *f;
 
-	f = kzalloc(sizeof(struct dm_verity_fec), GFP_KERNEL);
+	f = kzalloc(sizeof(struct dm_verity_fec_ex), GFP_KERNEL);
 	if (!f) {
 		v->ti->error = "Cannot allocate FEC structure";
 		return -ENOMEM;
 	}
-	v->fec = f;
+	v->fec = &f->base;
 
 	return 0;
 }
