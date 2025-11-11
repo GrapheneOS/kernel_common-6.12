@@ -690,6 +690,11 @@ DECLARE_HOOK(android_vh_migrate_pages_batch_break,
 DECLARE_HOOK(android_vh_migrate_batch_nr_pages,
 	TP_PROTO(struct list_head *head, int *nr_pages),
 	TP_ARGS(head, nr_pages));
+DECLARE_RESTRICTED_HOOK(android_rvh_gup_longterm_locked,
+	TP_PROTO(long rc, long nr_pinned_pages,
+		unsigned long start, unsigned long nr_pages,
+		struct page **pages),
+	TP_ARGS(rc, nr_pinned_pages, start, nr_pages, pages), 5);
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */
