@@ -194,6 +194,12 @@ static int __pkvm_device_assign(struct pkvm_device *dev, struct pkvm_hyp_vm *vm)
 			return ret;
 	}
 
+	if (dev->power_lock) {
+		ret = dev->power_lock(dev->cookie, true);
+		if (ret)
+			return ret;
+	}
+
 	ret = pkvm_device_reset(dev, true);
 	if (ret)
 		return ret;
@@ -350,6 +356,7 @@ void pkvm_devices_teardown(struct pkvm_hyp_vm *vm)
 		if (dev->ctxt != vm)
 			continue;
 		WARN_ON(pkvm_device_reset(dev, false));
+		WARN_ON(dev->power_lock && dev->power_lock(dev->cookie, false));
 		dev->ctxt = NULL;
 		pkvm_devices_reclaim_device(dev);
 	}
@@ -403,6 +410,19 @@ void pkvm_devices_put_context(u64 iommu_id, u32 endpoint_id)
 	hyp_spin_unlock(&device_spinlock);
 }
 
+static int pkvm_device_register_cookie(struct pkvm_device *dev, void *cookie)
+{
+	if (!cookie)
+		return 0;
+
+	if (dev->cookie && cookie != dev->cookie)
+		return -EINVAL;
+
+	dev->cookie = cookie;
+
+	return 0;
+}
+
 int pkvm_device_register_reset(u64 phys, void *cookie,
 			       int (*cb)(void *cookie, bool host_to_guest))
 {
@@ -415,8 +435,9 @@ int pkvm_device_register_reset(u64 phys, void *cookie,
 
 	hyp_spin_lock(&device_spinlock);
 	if (!dev->reset_handler) {
-		dev->reset_handler = cb;
-		dev->cookie = cookie;
+		ret = pkvm_device_register_cookie(dev, cookie);
+		if (!ret)
+			dev->reset_handler = cb;
 	} else {
 		ret = -EBUSY;
 	}
@@ -476,4 +497,27 @@ bool pkvm_device_request_dma(struct pkvm_hyp_vcpu *hyp_vcpu, u64 *exit_code)
 out_ret:
 	smccc_set_retval(vcpu, SMCCC_RET_INVALID_PARAMETER, 0, 0, 0);
 	return true;
+}
+
+int pkvm_device_register_power_lock(u64 phys, void *cookie,
+				       int (*handler)(void *cookie, bool on))
+{
+	struct pkvm_device *dev;
+	int ret = 0;
+
+	dev = pkvm_get_device_by_addr(phys);
+	if (!dev)
+		return -ENODEV;
+
+	hyp_spin_lock(&device_spinlock);
+	if (!dev->power_lock) {
+		ret = pkvm_device_register_cookie(dev, cookie);
+		if (!ret)
+			dev->power_lock = handler;
+	} else {
+		ret = -EBUSY;
+	}
+	hyp_spin_unlock(&device_spinlock);
+
+	return ret;
 }

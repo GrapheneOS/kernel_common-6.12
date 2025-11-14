@@ -229,6 +229,14 @@ struct pkvm_module_trng_ops {
  *				panic to avoid leaking any information.
  *				Direction of assignment can be deduced from pkvm_device::ctxt
  *				where NULL means host to guest and vice versa.
+ * @device_register_power_lock: Register a power lock callback for a device. It
+ *				is expected from this callback to protect or
+ *				unprotect (according to the @lock value) the
+ *				device against power cycle.
+ *				Similar to @device_register_reset, the device is
+ *				identified by the base address of the MMIO as
+ *				defined in the device-tree. @cookie may be NULL
+ *				but it has to match the one in @device_register_reset.
  * @register_guest_trng_ops:    Register a ARM SMCCC TRNG alternative implementation
  *				for pVMs. The @ops.trng_uuid is used to advertise the
  *				identity of TRNG implementation. @ops.trng_rnd64 is used
@@ -313,7 +321,8 @@ struct pkvm_module_ops {
 				    enum kvm_pgtable_prot prot, bool is_protected));
 	ANDROID_KABI_USE(3, int (*unmap_module_pages)(u64 pfn, void *va, u64 nr_pages));
 	ANDROID_KABI_USE(4, int (*request_hyp_alloc)(void));
-	ANDROID_KABI_RESERVE(5);
+	ANDROID_KABI_USE(5, int (*device_register_power_lock)(u64 phys, void *cookie,
+					     int(*cb)(void *cookie, bool lock)));
 	ANDROID_KABI_RESERVE(6);
 	ANDROID_KABI_RESERVE(7);
 	ANDROID_KABI_RESERVE(8);
