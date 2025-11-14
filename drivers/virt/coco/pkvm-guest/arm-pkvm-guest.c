@@ -18,6 +18,8 @@
 
 #include <asm/hypervisor.h>
 
+#include "pkvm-guest.h"
+
 static size_t pkvm_granule;
 static bool pkvm_func_range;
 
@@ -216,4 +218,7 @@ void pkvm_init_hyp_services(void)
 	if (kvm_arm_hyp_service_available(ARM_SMCCC_KVM_FUNC_MEM_RELINQUISH))
 		mem_relinquish_available = true;
 #endif
+
+	if (kvm_arm_hyp_service_available(ARM_SMCCC_KVM_FUNC_DEV_REQ_PWR))
+		pkvm_device_pm_init();
 }
