@@ -35,7 +35,7 @@ Other improvements tested on past profiles:
 
 To test a kernel prebuilt with the AutoFDO profile, navigate to [Android build server](
 https://ci.android.com/builds/branches/aosp_kernel-common-android16-6.12/grid) and download
-the kernel prebuilts under the `kernel_aarch64_autofdo` target.
+the kernel prebuilts under the `kernel_aarch64` target.
 
 ## Steps to reproduce the profile
 
