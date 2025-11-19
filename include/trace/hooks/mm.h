@@ -653,6 +653,9 @@ DECLARE_HOOK(android_vh_oom_reaper_delay_bypass,
 DECLARE_HOOK(android_vh_thaw_killed_process,
 	TP_PROTO(bool *thaw),
 	TP_ARGS(thaw));
+DECLARE_HOOK(android_vh_folio_add_lru,
+        TP_PROTO(struct folio *folio),
+        TP_ARGS(folio));
 DECLARE_HOOK(android_vh_folio_add_lru_folio_activate,
 	TP_PROTO(struct folio *folio, bool *bypass),
 	TP_ARGS(folio, bypass));
