@@ -221,6 +221,8 @@
   __traceiter_android_vh_compact_finished
   __tracepoint_android_vh_madvise_cold_or_pageout_abort
   __tracepoint_android_vh_compact_finished
+  __traceiter_android_vh_folio_add_lru
+  __tracepoint_android_vh_folio_add_lru
   netdev_get_name
   tcp_send_active_reset
   __traceiter_android_vh_tcp_write_timeout_estab_retrans
