@@ -155,7 +155,6 @@ bool init_done(struct zram *zram);
 
 struct zram_pp_ctl {
 	struct list_head	pp_buckets[NUM_PP_BUCKETS];
-	u64			processed_bytes;
 };
 
 struct zram_pp_ctl *init_pp_ctl(void);
@@ -166,7 +165,25 @@ int scan_slots_for_writeback(struct zram *zram, u32 mode,
 #endif
 
 #ifdef CONFIG_ZRAM_WRITEBACK
-int zram_writeback_slots(struct zram *zram, struct zram_pp_ctl *ctl);
+/* XXX: should be a per-device sysfs attr */
+#define ZRAM_WB_REQ_CNT 32
+
+struct zram_wb_ctl {
+	/* idle list is accessed only by the writeback task, no concurency */
+	struct list_head idle_reqs;
+	/* done list is accessed concurrently, protect by done_lock */
+	struct list_head done_reqs;
+	wait_queue_head_t done_wait;
+	spinlock_t done_lock;
+	atomic_t num_inflight;
+	u64 processed_bytes;
+};
+
+struct zram_wb_ctl *init_wb_ctl(void);
+void release_wb_ctl(struct zram_wb_ctl *wb_ctl);
+int zram_writeback_slots(struct zram *zram,
+			 struct zram_pp_ctl *ctl,
+			 struct zram_wb_ctl *wb_ctl);
 #endif
 
 #endif
