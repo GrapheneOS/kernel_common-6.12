@@ -131,6 +131,7 @@ struct zram {
 	struct file *backing_dev;
 	spinlock_t wb_limit_lock;
 	bool wb_limit_enable;
+	u32 wb_batch_size;
 	u64 bd_wb_limit;
 	struct block_device *bdev;
 	unsigned long *bitmap;
@@ -165,9 +166,6 @@ int scan_slots_for_writeback(struct zram *zram, u32 mode,
 #endif
 
 #ifdef CONFIG_ZRAM_WRITEBACK
-/* XXX: should be a per-device sysfs attr */
-#define ZRAM_WB_REQ_CNT 32
-
 struct zram_wb_ctl {
 	/* idle list is accessed only by the writeback task, no concurency */
 	struct list_head idle_reqs;
@@ -179,7 +177,7 @@ struct zram_wb_ctl {
 	u64 processed_bytes;
 };
 
-struct zram_wb_ctl *init_wb_ctl(void);
+struct zram_wb_ctl *init_wb_ctl(struct zram *zram);
 void release_wb_ctl(struct zram_wb_ctl *wb_ctl);
 int zram_writeback_slots(struct zram *zram,
 			 struct zram_pp_ctl *ctl,

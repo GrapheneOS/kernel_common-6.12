@@ -181,7 +181,7 @@ static int zram_ioctl_process_writeback(struct zram *zram,
 		goto clear_pp_in_progress;
 	}
 
-	wb_ctl = init_wb_ctl();
+	wb_ctl = init_wb_ctl(zram);
 	if (!wb_ctl) {
 		ret = -ENOMEM;
 		goto clear_pp_ctl;
