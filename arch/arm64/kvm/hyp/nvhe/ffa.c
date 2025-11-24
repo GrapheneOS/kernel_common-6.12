@@ -233,7 +233,7 @@ static int ffa_map_hyp_buffers(u64 ffa_page_count)
 	if (smp_load_acquire(&has_hyp_ffa_buffer_mapped))
 		return 0;
 
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_FN64_RXTX_MAP,
 		.a1 = hyp_virt_to_phys(hyp_buffers.tx),
 		.a2 = hyp_virt_to_phys(hyp_buffers.rx),
@@ -262,7 +262,7 @@ static int ffa_unmap_hyp_buffers(void)
 	if (!smp_load_acquire(&has_hyp_ffa_buffer_mapped))
 		return 0;
 
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_RXTX_UNMAP,
 		.a1 = HOST_FFA_ID,
 	}, &res);
@@ -281,7 +281,7 @@ static int ffa_unmap_hyp_buffers(void)
 static void ffa_mem_frag_tx(struct arm_smccc_1_2_regs *res, u32 handle_lo,
 			     u32 handle_hi, u32 fraglen, u32 endpoint_id)
 {
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_MEM_FRAG_TX,
 		.a1 = handle_lo,
 		.a2 = handle_hi,
@@ -293,7 +293,7 @@ static void ffa_mem_frag_tx(struct arm_smccc_1_2_regs *res, u32 handle_lo,
 static void ffa_mem_frag_rx(struct arm_smccc_1_2_regs *res, u32 handle_lo,
 			     u32 handle_hi, u32 fragoff)
 {
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_MEM_FRAG_RX,
 		.a1 = handle_lo,
 		.a2 = handle_hi,
@@ -305,7 +305,7 @@ static void ffa_mem_frag_rx(struct arm_smccc_1_2_regs *res, u32 handle_lo,
 static void ffa_mem_xfer(struct arm_smccc_1_2_regs *res, u64 func_id, u32 len,
 			  u32 fraglen)
 {
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = func_id,
 		.a1 = len,
 		.a2 = fraglen,
@@ -315,7 +315,7 @@ static void ffa_mem_xfer(struct arm_smccc_1_2_regs *res, u64 func_id, u32 len,
 static void ffa_mem_reclaim(struct arm_smccc_1_2_regs *res, u32 handle_lo,
 			     u32 handle_hi, u32 flags)
 {
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_MEM_RECLAIM,
 		.a1 = handle_lo,
 		.a2 = handle_hi,
@@ -325,7 +325,7 @@ static void ffa_mem_reclaim(struct arm_smccc_1_2_regs *res, u32 handle_lo,
 
 static void ffa_retrieve_req(struct arm_smccc_1_2_regs *res, u32 len)
 {
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_FN64_MEM_RETRIEVE_REQ,
 		.a1 = len,
 		.a2 = len,
@@ -334,7 +334,7 @@ static void ffa_retrieve_req(struct arm_smccc_1_2_regs *res, u32 len)
 
 static void ffa_rx_release(struct arm_smccc_1_2_regs *res)
 {
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_RX_RELEASE,
 	}, res);
 }
@@ -432,9 +432,7 @@ static int kvm_notify_vm_availability(uint16_t vm_handle, struct kvm_ffa_buffers
 			.a0 = FFA_RUN,
 			.a1 = dest,
 		};
-		__hyp_exit();
-		arm_smccc_1_2_smc(&res, &res);
-		__hyp_enter();
+		nvhe_arm_smccc_1_2_smc(&res, &res);
 		if (res.a0 == FFA_ERROR && (int)res.a2 != FFA_RET_NOT_SUPPORTED)
 			return ffa_to_linux_errno(res.a2);
 		else if (res.a0 == FFA_INTERRUPT)
@@ -461,9 +459,7 @@ static int kvm_notify_vm_availability(uint16_t vm_handle, struct kvm_ffa_buffers
 				.a4 = HANDLE_HIGH(FFA_INVALID_HANDLE),
 				.a5 = vm_handle,
 			};
-			__hyp_exit();
-			arm_smccc_1_2_smc(&res, &res);
-			__hyp_enter();
+			nvhe_arm_smccc_1_2_smc(&res, &res);
 
 			if (res.a0 != FFA_MSG_SEND_DIRECT_RESP)
 				return -EINVAL;
@@ -482,9 +478,7 @@ static int kvm_notify_vm_availability(uint16_t vm_handle, struct kvm_ffa_buffers
 				.a4 = HANDLE_HIGH(FFA_INVALID_HANDLE),
 				.a5 = vm_handle,
 			};
-		__hyp_exit();
-		arm_smccc_1_2_smc(&res, &res);
-		__hyp_enter();
+		nvhe_arm_smccc_1_2_smc(&res, &res);
 		if (res.a0 != FFA_MSG_SEND_DIRECT_RESP)
 			return -EINVAL;
 
@@ -977,7 +971,7 @@ static int __do_ffa_mem_xfer(const u64 func_id,
 	struct ffa_composite_mem_region *reg, *temp_reg;
 	struct ffa_mem_region *buf;
 	struct kvm_ffa_buffers *ffa_buf;
-	u32 offset, nr_ranges;
+	u32 offset, nr_ranges, checked_offset;
 	int ret = 0;
 	struct ffa_mem_transfer *transfer = NULL;
 	u64 ffa_handle;
@@ -1033,7 +1027,12 @@ static int __do_ffa_mem_xfer(const u64 func_id,
 		goto out_unlock;
 	}
 
-	if (fraglen < offset + sizeof(struct ffa_composite_mem_region)) {
+	if (check_add_overflow(offset, sizeof(struct ffa_composite_mem_region), &checked_offset)) {
+		ret = FFA_RET_INVALID_PARAMETERS;
+		goto out_unlock;
+	}
+
+	if (fraglen < checked_offset) {
 		ffa_to_smccc_error(res, FFA_RET_INVALID_PARAMETERS);
 		goto out_unlock;
 	}
@@ -1302,8 +1301,10 @@ static bool ffa_call_supported(u64 func_id)
 	case FFA_NOTIFICATION_SET:
 	case FFA_NOTIFICATION_GET:
 	case FFA_NOTIFICATION_INFO_GET:
+		return false;
 	/* Optional interfaces added in FF-A 1.2 */
 	case FFA_MSG_SEND_DIRECT_REQ2:		/* Optional per 7.5.1 */
+		return hyp_ffa_version >= FFA_VERSION_1_2;
 	case FFA_MSG_SEND_DIRECT_RESP2:		/* Optional per 7.5.1 */
 	case FFA_CONSOLE_LOG:			/* Optional per 13.1: not in Table 13.1 */
 	case FFA_PARTITION_INFO_GET_REGS:	/* Optional for virtual instances per 13.1 */
@@ -1385,7 +1386,7 @@ static void do_ffa_part_get_response(struct arm_smccc_1_2_regs *res,
 	int ret;
 	u32 count, partition_sz, copy_sz;
 
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_PARTITION_INFO_GET,
 		.a1 = uuid0,
 		.a2 = uuid1,
@@ -1430,7 +1431,7 @@ static int hyp_ffa_post_init(void)
 	size_t min_rxtx_sz;
 	struct arm_smccc_1_2_regs res;
 
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs){
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs){
 		.a0 = FFA_ID_GET,
 	}, &res);
 	if (res.a0 != FFA_SUCCESS)
@@ -1439,7 +1440,7 @@ static int hyp_ffa_post_init(void)
 	if (res.a2 != HOST_FFA_ID)
 		return -EINVAL;
 
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs){
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs){
 		.a0 = FFA_FEATURES,
 		.a1 = FFA_FN64_RXTX_MAP,
 	}, &res);
@@ -1490,7 +1491,7 @@ static void do_ffa_version(struct arm_smccc_1_2_regs *res,
 	 * first if TEE supports it.
 	 */
 	if (FFA_MINOR_VERSION(ffa_req_version) < FFA_MINOR_VERSION(hyp_ffa_version)) {
-		arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+		nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 			.a0 = FFA_VERSION,
 			.a1 = ffa_req_version,
 		}, res);
@@ -1526,11 +1527,6 @@ static void do_ffa_guest_version(struct arm_smccc_1_2_regs *res,
 	}
 
 	hyp_spin_lock(&version_lock);
-
-	if (!has_version_negotiated) {
-		res->a0 = FFA_RET_NOT_SUPPORTED;
-		goto unlock;
-	}
 
 	/* No backwards compatibility for you, please update your guest drivers*/
 	if (FFA_MINOR_VERSION(ffa_req_version) < FFA_MINOR_VERSION(hyp_ffa_version)) {
@@ -1579,9 +1575,7 @@ static void do_ffa_direct_msg(struct arm_smccc_1_2_regs *res,
 		return;
 	}
 
-	__hyp_exit();
-	arm_smccc_1_2_smc(args, res);
-	__hyp_enter();
+	nvhe_arm_smccc_1_2_smc(args, res);
 }
 
 static int kvm_host_ffa_signal_availability(void)
@@ -1701,6 +1695,10 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
 	case FFA_ID_GET:
 		ffa_to_smccc_res_prop(&res, FFA_RET_SUCCESS, HOST_FFA_ID);
 		goto out_handled;
+	case FFA_MSG_SEND_DIRECT_REQ2:
+		if (!ffa_call_supported(func_id))
+			goto out_not_supported;
+		fallthrough;
 	case FFA_MSG_SEND_DIRECT_REQ:
 	case FFA_FN64_MSG_SEND_DIRECT_REQ:
 		do_ffa_direct_msg(&res, host_ctxt, HOST_FFA_ID);
@@ -1710,6 +1708,7 @@ bool kvm_host_ffa_handler(struct kvm_cpu_context *host_ctxt, u32 func_id)
 	if (ffa_call_supported(func_id))
 		return false; /* Pass through */
 
+out_not_supported:
 	ffa_to_smccc_error(&res, FFA_RET_NOT_SUPPORTED);
 out_handled:
 	ffa_set_retval(host_ctxt, &res);
@@ -1726,7 +1725,8 @@ bool kvm_guest_ffa_handler(struct pkvm_hyp_vcpu *hyp_vcpu, u64 *exit_code)
 
 	DECLARE_REG(u64, func_id, ctxt, 0);
 
-	if (!is_ffa_call(func_id) || !VM_FFA_SUPPORTED(vcpu)) {
+	if (!is_ffa_call(func_id) || !VM_FFA_SUPPORTED(vcpu) ||
+	    !smp_load_acquire(&has_version_negotiated)) {
 		smccc_set_retval(vcpu, SMCCC_RET_NOT_SUPPORTED, 0, 0, 0);
 		return true;
 	}
@@ -1770,6 +1770,12 @@ bool kvm_guest_ffa_handler(struct pkvm_hyp_vcpu *hyp_vcpu, u64 *exit_code)
 		ffa_rx_release(&res);
 		hyp_spin_unlock(&kvm_ffa_hyp_lock);
 		goto out_guest;
+	case FFA_MSG_SEND_DIRECT_REQ2:
+		if (!ffa_call_supported(func_id)) {
+			ret = -EOPNOTSUPP;
+			goto out_guest_with_ret;
+		}
+		fallthrough;
 	case FFA_MSG_SEND_DIRECT_REQ:
 	case FFA_FN64_MSG_SEND_DIRECT_REQ:
 		do_ffa_direct_msg(&res, ctxt, hyp_vcpu_to_ffa_handle(hyp_vcpu));
@@ -1903,7 +1909,7 @@ int hyp_ffa_init(void *pages)
 	if (kvm_host_psci_config.smccc_version < ARM_SMCCC_VERSION_1_1)
 		return 0;
 
-	arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
+	nvhe_arm_smccc_1_2_smc(&(struct arm_smccc_1_2_regs) {
 		.a0 = FFA_VERSION,
 		.a1 = FFA_VERSION_1_2,
 	}, &res);
