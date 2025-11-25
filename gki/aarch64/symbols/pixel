@@ -995,6 +995,7 @@
   __flush_workqueue
   __folio_lock
   __folio_put
+  folio_unlock
   folio_wait_writeback
   for_each_thermal_trip
   __fortify_panic
@@ -1470,8 +1471,10 @@
   kunit_binary_assert_format
   kunit_binary_str_assert_format
   __kunit_do_failed_assertion
+  kunit_hooks
   kunit_kmalloc_array
   kunit_ptr_not_err_assert_format
+  kunit_running
   kvfree
   kvfree_call_rcu
   __kvmalloc_node_noprof
@@ -2653,11 +2656,11 @@
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_early_resume_begin
   __traceiter_android_vh_enable_thermal_genl_check
+  __traceiter_android_vh_ep_create_wakeup_source
   __traceiter_android_vh_exit_check
   __traceiter_android_vh_filemap_get_folio
   __traceiter_android_vh_free_one_page_flag_check
   __traceiter_android_vh_free_pages_prepare_init
-  __traceiter_android_vh_ep_create_wakeup_source
   __traceiter_android_vh_ipi_stop
   __traceiter_android_vh_mm_compaction_begin
   __traceiter_android_vh_mm_compaction_end
@@ -2677,8 +2680,8 @@
   __traceiter_android_vh_si_meminfo_adjust
   __traceiter_android_vh_swap_writepage
   __traceiter_android_vh_sysrq_crash
-  __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_timerfd_create
+  __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_uclamp_validate
   __traceiter_android_vh_ufs_check_int_errors
   __traceiter_android_vh_ufs_compl_command
@@ -2791,11 +2794,11 @@
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_early_resume_begin
   __tracepoint_android_vh_enable_thermal_genl_check
+  __tracepoint_android_vh_ep_create_wakeup_source
   __tracepoint_android_vh_exit_check
   __tracepoint_android_vh_filemap_get_folio
   __tracepoint_android_vh_free_one_page_flag_check
   __tracepoint_android_vh_free_pages_prepare_init
-  __tracepoint_android_vh_ep_create_wakeup_source
   __tracepoint_android_vh_ipi_stop
   __tracepoint_android_vh_mm_compaction_begin
   __tracepoint_android_vh_mm_compaction_end
@@ -2815,8 +2818,8 @@
   __tracepoint_android_vh_si_meminfo_adjust
   __tracepoint_android_vh_swap_writepage
   __tracepoint_android_vh_sysrq_crash
-  __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_timerfd_create
+  __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_uclamp_validate
   __tracepoint_android_vh_ufs_check_int_errors
   __tracepoint_android_vh_ufs_compl_command
@@ -2878,6 +2881,7 @@
   tty_termios_baud_rate
   tty_termios_encode_baud_rate
   typec_mux_get_drvdata
+  typec_mux_put
   typec_mux_register
   typec_mux_set
   typec_mux_unregister
@@ -2981,12 +2985,16 @@
   usb_free_all_descriptors
   usb_function_register
   usb_function_unregister
+  usb_gadget_connect
+  usb_gadget_disconnect
   usb_gadget_set_state
   usb_gstrings_attach
   usb_hcd_is_primary_hcd
   usb_hcd_platform_shutdown
   usb_hub_find_child
   usb_interface_id
+  usb_offload_get
+  usb_offload_put
   usb_otg_state_string
   usb_put_function_instance
   usb_put_hcd
