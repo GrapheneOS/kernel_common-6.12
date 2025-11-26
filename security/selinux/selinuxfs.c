@@ -1927,7 +1927,7 @@ static int sel_make_policycap(struct selinux_fs_info *fsi)
 
 	/* ANDROID: Handle the memfd_class policycap separately to preserve the KMI. */
 	return sel_make_android_policycap(fsi, POLICYDB_CAP_MEMFD_CLASS,
-					  "memfd_class");
+					  POLICYDB_CAP_MEMFD_CLASS_NAME);
 }
 
 static struct dentry *sel_make_dir(struct dentry *dir, const char *name,

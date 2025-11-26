@@ -2144,7 +2144,8 @@ static void security_load_policycaps(struct selinux_policy *policy)
 			selinux_policycap_names[i],
 			ebitmap_get_bit(&p->policycaps, i));
 
-	pr_info("SELinux: policy capability memfd_class=%d\n",
+	pr_info("SELinux: policy capability %s=%d\n",
+		POLICYDB_CAP_MEMFD_CLASS_NAME,
 		ebitmap_get_bit(&p->policycaps, POLICYDB_CAP_MEMFD_CLASS));
 
 	ebitmap_for_each_positive_bit(&p->policycaps, node, i) {

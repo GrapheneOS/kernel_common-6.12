@@ -65,7 +65,7 @@ static char *selinux_ima_collect_state(void)
 	 * ANDROID: memfd_class is handled separately from the rest of the policycaps to preserve
 	 * the ABI.
 	 */
-	rc = strlcat(buf, "memfd_class", buf_len);
+	rc = strlcat(buf, POLICYDB_CAP_MEMFD_CLASS_NAME, buf_len);
 	WARN_ON(rc >= buf_len);
 
 	rc = strlcat(buf, selinux_memfd_class_policycap ? on : off, buf_len);
