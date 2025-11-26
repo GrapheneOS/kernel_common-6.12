@@ -30,6 +30,12 @@ static char *selinux_ima_collect_state(void)
 	for (i = 0; i < __POLICYDB_CAP_MAX; i++)
 		buf_len += strlen(selinux_policycap_names[i]) + len;
 
+	/*
+	 * ANDROID: memfd_class is handled separately from the rest of the policycaps to preserve
+	 * the ABI.
+	 */
+	buf_len += strlen(POLICYDB_CAP_MEMFD_CLASS_NAME) + len;
+
 	buf = kzalloc(buf_len, GFP_KERNEL);
 	if (!buf)
 		return NULL;
