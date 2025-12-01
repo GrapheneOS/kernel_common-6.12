@@ -35,6 +35,12 @@ DECLARE_HOOK(android_vh_scheduler_tick,
 	TP_PROTO(struct rq *rq),
 	TP_ARGS(rq));
 
+struct sched_class;
+DECLARE_HOOK(android_vh_setscheduler_class,
+	TP_PROTO(const struct sched_class **class, int *should_scx,
+		 struct task_struct *p, int policy, int prio),
+	TP_ARGS(class, should_scx, p, policy, prio));
+
 DECLARE_RESTRICTED_HOOK(android_rvh_enqueue_task,
 	TP_PROTO(struct rq *rq, struct task_struct *p, int flags),
 	TP_ARGS(rq, p, flags), 1);

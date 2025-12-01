@@ -4680,6 +4680,7 @@ static void scx_ops_disable_workfn(struct kthread_work *work)
 			__setscheduler_class(p->policy, p->prio);
 		struct sched_enq_and_set_ctx ctx;
 
+		trace_android_vh_setscheduler_class(&new_class, NULL, p, p->policy, p->prio);
 		if (old_class != new_class && p->se.sched_delayed)
 			dequeue_task(task_rq(p), p, DEQUEUE_SLEEP | DEQUEUE_DELAYED);
 
@@ -5400,6 +5401,7 @@ static int scx_ops_enable(struct sched_ext_ops *ops, struct bpf_link *link)
 			__setscheduler_class(p->policy, p->prio);
 		struct sched_enq_and_set_ctx ctx;
 
+		trace_android_vh_setscheduler_class(&new_class, NULL, p, p->policy, p->prio);
 		if (!tryget_task_struct(p))
 			continue;
 
