@@ -2573,8 +2573,8 @@ static int guest_request_ioguard_walker(const struct kvm_pgtable_visit_ctx *ctx,
 	kvm_pte_t pte = *ctx->ptep;
 	u64 granule_size;
 
-	state = guest_get_page_state(pte, 0);
-	if (state != PKVM_MMIO && state != PKVM_NOPAGE)
+	state = guest_get_page_state(pte, 0) & ~PKVM_MMIO;
+	if (state != PKVM_NOPAGE)
 		return -EPERM;
 
 	granule_size = kvm_granule_size(ctx->level);
@@ -2623,6 +2623,7 @@ int __pkvm_install_ioguard_page(struct pkvm_hyp_vcpu *hyp_vcpu, u64 ipa,
 		goto unlock;
 	}
 
+	*nr_guarded = (end - ipa) >> PAGE_SHIFT;
 	ret = kvm_pgtable_stage2_annotate(&vm->pgt, ipa, end - ipa,
 					  &hyp_vcpu->vcpu.arch.stage2_mc,
 					  KVM_INVALID_PTE_MMIO_NOTE);
