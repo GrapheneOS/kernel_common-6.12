@@ -24,6 +24,7 @@ enum {
  * This value must match what userspace expects the capability number to be.
  */
 #define POLICYDB_CAP_MEMFD_CLASS 13
+#define POLICYDB_CAP_MEMFD_CLASS_NAME "memfd_class"
 
 extern const char *const selinux_policycap_names[__POLICYDB_CAP_MAX];
 
