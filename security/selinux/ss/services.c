@@ -2140,6 +2140,10 @@ static void security_load_policycaps(struct selinux_policy *policy)
 	WRITE_ONCE(selinux_memfd_class_policycap, ebitmap_get_bit(&p->policycaps,
 								  POLICYDB_CAP_MEMFD_CLASS));
 
+	WRITE_ONCE(selinux_seclabel_wildcard_policycap,
+		   ebitmap_get_bit(&p->policycaps,
+				   POLICYDB_CAP_GENFS_SECLABEL_WILDCARD));
+
 	for (i = 0; i < ARRAY_SIZE(selinux_policycap_names); i++)
 		pr_info("SELinux:  policy capability %s=%d\n",
 			selinux_policycap_names[i],
@@ -2149,8 +2153,15 @@ static void security_load_policycaps(struct selinux_policy *policy)
 		POLICYDB_CAP_MEMFD_CLASS_NAME,
 		ebitmap_get_bit(&p->policycaps, POLICYDB_CAP_MEMFD_CLASS));
 
+	pr_info("SELinux: policy capability %s=%d\n",
+		POLICYDB_CAP_GENFS_SECLABEL_WILDCARD_NAME,
+		ebitmap_get_bit(&p->policycaps,
+				POLICYDB_CAP_GENFS_SECLABEL_WILDCARD));
+
 	ebitmap_for_each_positive_bit(&p->policycaps, node, i) {
-		if (i >= ARRAY_SIZE(selinux_policycap_names) && i != POLICYDB_CAP_MEMFD_CLASS)
+		if (i >= ARRAY_SIZE(selinux_policycap_names) &&
+		    i != POLICYDB_CAP_MEMFD_CLASS &&
+		    i != POLICYDB_CAP_GENFS_SECLABEL_WILDCARD)
 			pr_info("SELinux:  unknown policy capability %u\n",
 				i);
 	}

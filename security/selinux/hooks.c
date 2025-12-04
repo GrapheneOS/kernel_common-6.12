@@ -112,9 +112,10 @@
 struct selinux_state selinux_state;
 
 /*
- * ANDROID: selinux_state is part of the KMI, and adding memfd_class as part of the policycap
- * array in the structure would break the KMI, so declare it outside.
+ * ANDROID: selinux_state is part of the KMI, and backporting capabilities into
+ * the policycap array in it break the KMI, so declare it outside.
  */
+bool selinux_seclabel_wildcard_policycap;
 bool selinux_memfd_class_policycap;
 
 /* SECMARK reference count */

@@ -105,6 +105,7 @@ struct selinux_state {
 	struct mutex policy_mutex;
 } __randomize_layout;
 
+extern bool selinux_seclabel_wildcard_policycap;
 extern bool selinux_memfd_class_policycap;
 
 void selinux_avc_init(void);
