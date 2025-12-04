@@ -443,11 +443,6 @@ DECLARE_HOOK(android_vh_switching_to_scx,
 	TP_PROTO(struct rq *rq, struct task_struct *p),
 	TP_ARGS(rq, p));
 
-struct sugov_policy;
-DECLARE_RESTRICTED_HOOK(android_rvh_set_sugov_update,
-	TP_PROTO(struct sugov_policy *sg_policy, unsigned int next_freq, bool *should_update),
-	TP_ARGS(sg_policy, next_freq, should_update), 1);
-
 DECLARE_RESTRICTED_HOOK(android_rvh_update_rq_clock_pelt,
 	TP_PROTO(struct rq *rq, s64 delta, int *ret),
 	TP_ARGS(rq, delta, ret), 1);
