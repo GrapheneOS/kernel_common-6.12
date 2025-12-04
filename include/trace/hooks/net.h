@@ -18,12 +18,6 @@ enum tcp_state_change_reason {
 };
 #endif
 
-struct packet_type;
-struct list_head;
-DECLARE_HOOK(android_vh_ptype_head,
-	TP_PROTO(const struct packet_type *pt, struct list_head *vendor_pt),
-	TP_ARGS(pt, vendor_pt));
-
 struct sock;
 struct sockaddr_in6;
 struct tcp_sock;
