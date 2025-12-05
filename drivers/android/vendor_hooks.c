@@ -80,6 +80,7 @@
 #include <trace/hooks/usb.h>
 #include <trace/hooks/kasan.h>
 #include <trace/hooks/dmv_debug.h>
+#include <trace/hooks/vb2.h>
 
 /*
  * Export tracepoints that act as a bare tracehook (ie: have no trace event
@@ -673,3 +674,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_filemap_folio_mapped);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_folio_remove_rmap_ptes);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_exit_oom_victim);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_oom_killer_disable);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_vb2_plane_fill_v4l2_plane);
