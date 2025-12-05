@@ -238,6 +238,7 @@ static int pkvm_vcpu_init_traps(struct pkvm_hyp_vcpu *hyp_vcpu)
 	pvm_init_traps_hcr(vcpu);
 	pvm_init_traps_hcrx(vcpu);
 	pvm_init_traps_mdcr(vcpu);
+	kvm_calculate_fgu_traps(vcpu);
 
 	return 0;
 }
