@@ -387,6 +387,17 @@ config ARM_SMMU_QCOM_DEBUG
 	  or TLB sync timeouts which requires implementation defined
 	  register dumps.
 
+config ARM_SMMU_NVIDIA
+	tristate "NVIDIA Tegra SMMU implementation"
+	depends on ARM_SMMU && TEGRA_MC
+	help
+	  Support for NVIDIA Tegra SoC specific SMMU implementation.
+	  This enables the NVIDIA specific ARM SMMU implementation
+	  which is required for Tegra186, Tegra194, and Tegra234 SoCs.
+
+	  Say M here if you are building for an NVIDIA Tegra platform
+	  that uses ARM SMMU.
+
 config ARM_SMMU_V3
 	tristate "ARM Ltd. System MMU Version 3 (SMMUv3) Support"
 	depends on ARM64
