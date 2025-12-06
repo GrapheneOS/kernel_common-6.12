@@ -271,6 +271,8 @@
   trace_print_symbols_seq
   trace_raw_output_prep
   __trace_trigger_soft_disabled
+  __traceiter_android_vh_vb2_plane_fill_v4l2_plane
+  __tracepoint_android_vh_vb2_plane_fill_v4l2_plane
   unregister_chrdev_region
   up_read
   up_write
