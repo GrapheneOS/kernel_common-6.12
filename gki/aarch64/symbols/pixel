@@ -289,6 +289,9 @@
   crypto_skcipher_encrypt
   crypto_skcipher_setkey
   __crypto_xor
+  css_task_iter_end
+  css_task_iter_next
+  css_task_iter_start
   csum_ipv6_magic
   csum_partial
   csum_tcpudp_nofold
@@ -1051,6 +1054,7 @@
   gen_pool_has_addr
   gen_pool_set_algo
   gen_pool_size
+  get_cmdline
   get_cpu_device
   get_cpu_idle_time
   get_cpu_idle_time_us
@@ -1251,6 +1255,8 @@
   init_uts_ns
   init_wait_entry
   __init_waitqueue_head
+  inode_owner_or_capable
+  inode_permission
   input_alloc_absinfo
   input_allocate_device
   input_close_device
@@ -1298,6 +1304,7 @@
   iommu_group_get
   iommu_group_get_iommudata
   iommu_group_put
+  iommu_group_ref_get
   iommu_group_set_iommudata
   iommu_group_set_name
   iommu_iova_to_phys
@@ -1647,8 +1654,10 @@
   __nlmsg_put
   nonseekable_open
   noop_llseek
+  nop_mnt_idmap
   nr_cpu_ids
   nr_irqs
+  nr_swap_pages
   ns_capable
   ns_capable_noaudit
   nsecs_to_jiffies
@@ -2588,6 +2597,7 @@
   trace_event_reg
   trace_handle_return
   __traceiter_android_rvh_after_dequeue_task
+  __traceiter_android_rvh_after_enqueue_task
   __traceiter_android_rvh_attach_entity_load_avg
   __traceiter_android_rvh_build_perf_domains
   __traceiter_android_rvh_can_migrate_task
@@ -2652,6 +2662,7 @@
   __traceiter_android_vh_chk_task
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
+  __traceiter_android_vh_do_async_mmap_readahead
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_early_resume_begin
@@ -2726,6 +2737,7 @@
   __traceiter_workqueue_execute_start
   trace_output_call
   __tracepoint_android_rvh_after_dequeue_task
+  __tracepoint_android_rvh_after_enqueue_task
   __tracepoint_android_rvh_attach_entity_load_avg
   __tracepoint_android_rvh_build_perf_domains
   __tracepoint_android_rvh_can_migrate_task
@@ -2790,6 +2802,7 @@
   __tracepoint_android_vh_chk_task
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
+  __tracepoint_android_vh_do_async_mmap_readahead
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_early_resume_begin
