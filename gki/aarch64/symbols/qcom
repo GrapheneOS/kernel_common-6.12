@@ -3338,6 +3338,7 @@
   trace_event_reg
   trace_get_event_file
   trace_handle_return
+  __traceiter_android_rvh___set_task_cpu
   __traceiter_android_rvh_account_irq
   __traceiter_android_rvh_after_dequeue_task
   __traceiter_android_rvh_after_enqueue_task
@@ -3485,6 +3486,7 @@
   __traceiter_suspend_resume
   __traceiter_xdp_exception
   trace_output_call
+  __tracepoint_android_rvh___set_task_cpu
   __tracepoint_android_rvh_account_irq
   __tracepoint_android_rvh_after_dequeue_task
   __tracepoint_android_rvh_after_enqueue_task
