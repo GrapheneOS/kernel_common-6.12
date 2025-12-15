@@ -302,6 +302,9 @@
 # required mmdvfs.ko
   devfreq_event_get_event
 
+# required ntfs3.ko
+  filemap_fdatawrite_range_kick
+
 # required pinctrl_sprd.ko
   pinctrl_register
   pinctrl_unregister
