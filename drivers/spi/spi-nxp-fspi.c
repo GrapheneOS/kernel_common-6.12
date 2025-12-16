@@ -1240,9 +1240,7 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 		return dev_err_probe(dev, ret, "Failed to request irq\n");
 	}
 
-	ret = devm_mutex_init(dev, &f->lock);
-	if (ret)
-		return dev_err_probe(dev, ret, "Failed to initialize lock\n");
+	devm_mutex_init(dev, &f->lock);
 
 	ctlr->bus_num = -1;
 	ctlr->num_chipselect = NXP_FSPI_MAX_CHIPSELECT;
