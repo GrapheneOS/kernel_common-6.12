@@ -1167,10 +1167,10 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 	struct device_node *np = dev->of_node;
 	struct resource *res;
 	struct nxp_fspi *f;
-	int ret, irq;
+	int ret;
 	u32 reg;
 
-	ctlr = devm_spi_alloc_host(&pdev->dev, sizeof(*f));
+	ctlr = spi_alloc_host(&pdev->dev, sizeof(*f));
 	if (!ctlr)
 		return -ENOMEM;
 
@@ -1180,8 +1180,10 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 	f = spi_controller_get_devdata(ctlr);
 	f->dev = dev;
 	f->devtype_data = (struct nxp_fspi_devtype_data *)device_get_match_data(dev);
-	if (!f->devtype_data)
-		return -ENODEV;
+	if (!f->devtype_data) {
+		ret = -ENODEV;
+		goto err_put_ctrl;
+	}
 
 	platform_set_drvdata(pdev, f);
 
@@ -1190,8 +1192,11 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 		f->iobase = devm_platform_ioremap_resource(pdev, 0);
 	else
 		f->iobase = devm_platform_ioremap_resource_byname(pdev, "fspi_base");
-	if (IS_ERR(f->iobase))
-		return PTR_ERR(f->iobase);
+
+	if (IS_ERR(f->iobase)) {
+		ret = PTR_ERR(f->iobase);
+		goto err_put_ctrl;
+	}
 
 	/* find the resources - controller memory mapped space */
 	if (is_acpi_node(dev_fwnode(f->dev)))
@@ -1199,8 +1204,11 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 	else
 		res = platform_get_resource_byname(pdev,
 				IORESOURCE_MEM, "fspi_mmap");
-	if (!res)
-		return -ENODEV;
+
+	if (!res) {
+		ret = -ENODEV;
+		goto err_put_ctrl;
+	}
 
 	/* assign memory mapped starting address and mapped size. */
 	f->memmap_phy = res->start;
@@ -1209,46 +1217,69 @@ static int nxp_fspi_probe(struct platform_device *pdev)
 	/* find the clocks */
 	if (dev_of_node(&pdev->dev)) {
 		f->clk_en = devm_clk_get(dev, "fspi_en");
-		if (IS_ERR(f->clk_en))
-			return PTR_ERR(f->clk_en);
+		if (IS_ERR(f->clk_en)) {
+			ret = PTR_ERR(f->clk_en);
+			goto err_put_ctrl;
+		}
 
 		f->clk = devm_clk_get(dev, "fspi");
-		if (IS_ERR(f->clk))
-			return PTR_ERR(f->clk);
+		if (IS_ERR(f->clk)) {
+			ret = PTR_ERR(f->clk);
+			goto err_put_ctrl;
+		}
+
+		ret = nxp_fspi_clk_prep_enable(f);
+		if (ret) {
+			dev_err(dev, "can not enable the clock\n");
+			goto err_put_ctrl;
+		}
 	}
-
-	/* find the irq */
-	irq = platform_get_irq(pdev, 0);
-	if (irq < 0)
-		return dev_err_probe(dev, irq, "Failed to get irq source");
-
-	ret = nxp_fspi_clk_prep_enable(f);
-	if (ret)
-		return dev_err_probe(dev, ret, "Can't enable the clock\n");
 
 	/* Clear potential interrupts */
 	reg = fspi_readl(f, f->iobase + FSPI_INTR);
 	if (reg)
 		fspi_writel(f, reg, f->iobase + FSPI_INTR);
 
-	nxp_fspi_default_setup(f);
+	/* find the irq */
+	ret = platform_get_irq(pdev, 0);
+	if (ret < 0)
+		goto err_disable_clk;
 
-	ret = devm_request_irq(dev, irq,
+	ret = devm_request_irq(dev, ret,
 			nxp_fspi_irq_handler, 0, pdev->name, f);
 	if (ret) {
-		nxp_fspi_clk_disable_unprep(f);
-		return dev_err_probe(dev, ret, "Failed to request irq\n");
+		dev_err(dev, "failed to request irq: %d\n", ret);
+		goto err_disable_clk;
 	}
 
-	devm_mutex_init(dev, &f->lock);
+	mutex_init(&f->lock);
 
 	ctlr->bus_num = -1;
 	ctlr->num_chipselect = NXP_FSPI_MAX_CHIPSELECT;
 	ctlr->mem_ops = &nxp_fspi_mem_ops;
 	ctlr->mem_caps = &nxp_fspi_mem_caps;
+
+	nxp_fspi_default_setup(f);
+
 	ctlr->dev.of_node = np;
 
-	return devm_spi_register_controller(&pdev->dev, ctlr);
+	ret = devm_spi_register_controller(&pdev->dev, ctlr);
+	if (ret)
+		goto err_destroy_mutex;
+
+	return 0;
+
+err_destroy_mutex:
+	mutex_destroy(&f->lock);
+
+err_disable_clk:
+	nxp_fspi_clk_disable_unprep(f);
+
+err_put_ctrl:
+	spi_controller_put(ctlr);
+
+	dev_err(dev, "NXP FSPI probe failed\n");
+	return ret;
 }
 
 static void nxp_fspi_remove(struct platform_device *pdev)
@@ -1259,6 +1290,8 @@ static void nxp_fspi_remove(struct platform_device *pdev)
 	fspi_writel(f, FSPI_MCR0_MDIS, f->iobase + FSPI_MCR0);
 
 	nxp_fspi_clk_disable_unprep(f);
+
+	mutex_destroy(&f->lock);
 
 	if (f->ahb_addr)
 		iounmap(f->ahb_addr);
