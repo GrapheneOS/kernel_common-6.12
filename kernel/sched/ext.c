@@ -2499,7 +2499,6 @@ static struct rq *move_task_between_dsqs(struct task_struct *p, u64 enq_flags,
 static bool consume_dispatch_q(struct rq *rq, struct scx_dispatch_q *dsq)
 {
 	struct task_struct *p;
-	bool disallow = false;
 retry:
 	/*
 	 * The caller can't expect to successfully consume a task if the task's
@@ -2514,9 +2513,6 @@ retry:
 	nldsq_for_each_task(p, dsq) {
 		struct rq *task_rq = task_rq(p);
 
-		trace_android_vh_scx_task_can_run_on(&disallow, p, rq);
-		if (disallow)
-			continue;
 		if (rq == task_rq) {
 			task_unlink_from_dsq(p, dsq);
 			move_local_task_to_local_dsq(p, 0, dsq, rq);
@@ -5081,7 +5077,6 @@ static void scx_ops_error_irq_workfn(struct irq_work *irq_work)
 	if (ei->kind >= SCX_EXIT_ERROR)
 		scx_dump_state(ei, scx_ops.exit_dump_len);
 
-	trace_android_vh_scx_exit_on_abnormal(ei);
 	schedule_scx_ops_disable_work();
 }
 
