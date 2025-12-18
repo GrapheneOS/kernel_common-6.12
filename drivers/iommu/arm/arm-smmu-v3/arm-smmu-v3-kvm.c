@@ -495,6 +495,9 @@ static int kvm_arm_smmu_map_pages(struct iommu_domain *domain,
 {
 	struct kvm_arm_smmu_domain *kvm_smmu_domain = to_kvm_smmu_domain(domain);
 
+	if (!kvm_smmu_domain->smmu)
+		return -ENODEV;
+
 	return kvm_iommu_map_pages(kvm_smmu_domain->id, iova, paddr, pgsize,
 				   pgcount, prot, gfp, total_mapped);
 }
@@ -506,6 +509,9 @@ static size_t kvm_arm_smmu_unmap_pages(struct iommu_domain *domain,
 {
 	struct kvm_arm_smmu_domain *kvm_smmu_domain = to_kvm_smmu_domain(domain);
 
+	if (!kvm_smmu_domain->smmu)
+		return 0;
+
 	return kvm_iommu_unmap_pages(kvm_smmu_domain->id, iova, pgsize, pgcount);
 }
 
@@ -513,6 +519,9 @@ static phys_addr_t kvm_arm_smmu_iova_to_phys(struct iommu_domain *domain,
 					     dma_addr_t iova)
 {
 	struct kvm_arm_smmu_domain *kvm_smmu_domain = to_kvm_smmu_domain(domain);
+
+	if (!kvm_smmu_domain->smmu)
+		return 0;
 
 	return kvm_iommu_iova_to_phys(kvm_smmu_domain->id, iova);
 }
