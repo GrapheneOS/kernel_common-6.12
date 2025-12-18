@@ -26,6 +26,10 @@ DECLARE_RESTRICTED_HOOK(android_rvh_select_fallback_rq,
 	TP_PROTO(int cpu, struct task_struct *p, int *new_cpu),
 	TP_ARGS(cpu, p, new_cpu), 1);
 
+DECLARE_RESTRICTED_HOOK(android_rvh___set_task_cpu,
+	TP_PROTO(struct task_struct *p, unsigned int new_cpu),
+	TP_ARGS(p, new_cpu), 1);
+
 struct rq;
 DECLARE_HOOK(android_vh_scheduler_tick,
 	TP_PROTO(struct rq *rq),
@@ -412,6 +416,11 @@ DECLARE_RESTRICTED_HOOK(android_rvh_set_task_comm,
 DECLARE_HOOK(android_vh_move_entity,
 	TP_PROTO(int *move, unsigned int flags),
 	TP_ARGS(move, flags));
+DECLARE_HOOK(android_vh_scx_restore_flags,
+	TP_PROTO(const struct sched_class *prev_class,
+		 const struct sched_class *next_class,
+		 int *flags),
+	TP_ARGS(prev_class, next_class, flags));
 DECLARE_HOOK(android_vh_task_should_scx,
 	TP_PROTO(int *should_scx, int policy, int prio),
 	TP_ARGS(should_scx, policy, prio));
@@ -433,15 +442,17 @@ DECLARE_HOOK(android_vh_scx_set_cpus_allowed,
 DECLARE_HOOK(android_vh_scx_task_switch_finish,
 	TP_PROTO(struct task_struct *p, int enable),
 	TP_ARGS(p, enable));
+DECLARE_HOOK(android_vh_scx_task_can_run_on,
+	TP_PROTO(bool *disallow, struct task_struct *p, struct rq *rq),
+	TP_ARGS(disallow, p, rq));
 
+struct scx_exit_info;
+DECLARE_HOOK(android_vh_scx_exit_on_abnormal,
+	TP_PROTO(struct scx_exit_info *ei),
+	TP_ARGS(ei));
 DECLARE_HOOK(android_vh_switching_to_scx,
 	TP_PROTO(struct rq *rq, struct task_struct *p),
 	TP_ARGS(rq, p));
-
-struct sugov_policy;
-DECLARE_RESTRICTED_HOOK(android_rvh_set_sugov_update,
-	TP_PROTO(struct sugov_policy *sg_policy, unsigned int next_freq, bool *should_update),
-	TP_ARGS(sg_policy, next_freq, should_update), 1);
 
 DECLARE_RESTRICTED_HOOK(android_rvh_update_rq_clock_pelt,
 	TP_PROTO(struct rq *rq, s64 delta, int *ret),

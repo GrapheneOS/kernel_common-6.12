@@ -23,12 +23,18 @@
 #include <linux/cache.h>
 #include <linux/sched/topology.h>
 #include <linux/sched/signal.h>
+#include <linux/suspend.h>
 #include <linux/delay.h>
 #include <linux/crash_dump.h>
 #include <linux/prefetch.h>
 #include <linux/blk-crypto.h>
 #include <linux/part_stat.h>
 #include <linux/sched/isolation.h>
+#include <linux/android_kabi.h>
+ANDROID_KABI_DECLONLY(obj_cgroup);
+ANDROID_KABI_DECLONLY(swap_info_struct);
+ANDROID_KABI_DECLONLY(mem_cgroup);
+ANDROID_KABI_DECLONLY(reclaim_state);
 
 #include <trace/events/block.h>
 
@@ -1531,6 +1537,35 @@ void blk_mq_requeue_request(struct request *rq, bool kick_requeue_list)
 }
 EXPORT_SYMBOL(blk_mq_requeue_request);
 
+/*
+ * Whether the block layer should preserve the order of @rq relative to other
+ * requests submitted to the same software queue.
+ */
+static bool blk_mq_preserve_order(struct request *rq)
+{
+	return blk_pipeline_zwr(rq->q) && blk_rq_is_seq_zoned_write(rq);
+}
+
+/*
+ * Whether the order should be preserved for any request in @list. Returns %true
+ * if and only if zoned write pipelining is enabled and if there are any
+ * sequential zoned writes in @list.
+ */
+static bool blk_mq_preserve_order_for_list(struct request_queue *q,
+					   struct list_head *list)
+{
+	struct request *rq;
+
+	if (!blk_pipeline_zwr(q))
+		return false;
+
+	list_for_each_entry(rq, list, queuelist)
+		if (blk_rq_is_seq_zoned_write(rq))
+			return true;
+
+	return false;
+}
+
 static void blk_mq_requeue_work(struct work_struct *work)
 {
 	struct request_queue *q =
@@ -1553,7 +1588,9 @@ static void blk_mq_requeue_work(struct work_struct *work)
 		 * already.  Insert it into the hctx dispatch list to avoid
 		 * block layer merges for the request.
 		 */
-		if (rq->rq_flags & RQF_DONTPREP)
+		if (blk_mq_preserve_order(rq))
+			blk_mq_insert_request(rq, BLK_MQ_INSERT_ORDERED);
+		else if (rq->rq_flags & RQF_DONTPREP)
 			blk_mq_request_bypass_insert(rq, 0);
 		else
 			blk_mq_insert_request(rq, BLK_MQ_INSERT_AT_HEAD);
@@ -2370,7 +2407,7 @@ void blk_mq_run_hw_queue(struct blk_mq_hw_ctx *hctx, bool async)
 		return;
 	}
 
-	blk_mq_run_dispatch_ops(hctx->queue,
+	blk_mq_run_dispatch_ops_serialized(hctx,
 				blk_mq_sched_dispatch_requests(hctx));
 }
 EXPORT_SYMBOL(blk_mq_run_hw_queue);
@@ -2546,7 +2583,7 @@ static void blk_mq_run_work_fn(struct work_struct *work)
 	struct blk_mq_hw_ctx *hctx =
 		container_of(work, struct blk_mq_hw_ctx, run_work.work);
 
-	blk_mq_run_dispatch_ops(hctx->queue,
+	blk_mq_run_dispatch_ops_serialized(hctx,
 				blk_mq_sched_dispatch_requests(hctx));
 }
 
@@ -2581,7 +2618,8 @@ static void blk_mq_insert_requests(struct blk_mq_hw_ctx *hctx,
 	 * Try to issue requests directly if the hw queue isn't busy to save an
 	 * extra enqueue & dequeue to the sw queue.
 	 */
-	if (!hctx->dispatch_busy && !run_queue_async) {
+	if (!hctx->dispatch_busy && !run_queue_async &&
+	    !blk_mq_preserve_order_for_list(hctx->queue, list)) {
 		blk_mq_run_dispatch_ops(hctx->queue,
 			blk_mq_try_issue_list_directly(hctx, list));
 		if (list_empty(list))
@@ -2606,6 +2644,20 @@ static void blk_mq_insert_requests(struct blk_mq_hw_ctx *hctx,
 out:
 	blk_mq_run_hw_queue(hctx, run_queue_async);
 }
+
+void blk_mq_insert_ordered(struct request *rq, struct list_head *list)
+{
+	struct request_queue *q = rq->q;
+	struct request *rq2;
+
+	list_for_each_entry(rq2, list, queuelist)
+		if (rq2->q == q && blk_rq_pos(rq2) > blk_rq_pos(rq))
+			break;
+
+	/* Insert rq before rq2. If rq2 is the list head, append at the end. */
+	list_add_tail(&rq->queuelist, &rq2->queuelist);
+}
+EXPORT_SYMBOL_GPL(blk_mq_insert_ordered);
 
 static void blk_mq_insert_request(struct request *rq, blk_insert_t flags)
 {
@@ -2661,6 +2713,8 @@ static void blk_mq_insert_request(struct request *rq, blk_insert_t flags)
 		spin_lock(&ctx->lock);
 		if (flags & BLK_MQ_INSERT_AT_HEAD)
 			list_add(&rq->queuelist, &ctx->rq_lists[hctx->type]);
+		else if (flags & BLK_MQ_INSERT_ORDERED)
+			blk_mq_insert_ordered(rq, &ctx->rq_lists[hctx->type]);
 		else
 			list_add_tail(&rq->queuelist,
 				      &ctx->rq_lists[hctx->type]);
@@ -2751,11 +2805,12 @@ static bool blk_mq_get_budget_and_tag(struct request *rq)
 static void blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
 		struct request *rq)
 {
+	bool async = blk_pipeline_zwr(rq->q);
 	blk_status_t ret;
 
 	if (blk_mq_hctx_stopped(hctx) || blk_queue_quiesced(rq->q)) {
 		blk_mq_insert_request(rq, 0);
-		blk_mq_run_hw_queue(hctx, false);
+		blk_mq_run_hw_queue(hctx, async);
 		return;
 	}
 
@@ -2772,7 +2827,7 @@ static void blk_mq_try_issue_directly(struct blk_mq_hw_ctx *hctx,
 	case BLK_STS_RESOURCE:
 	case BLK_STS_DEV_RESOURCE:
 		blk_mq_request_bypass_insert(rq, 0);
-		blk_mq_run_hw_queue(hctx, false);
+		blk_mq_run_hw_queue(hctx, async);
 		break;
 	default:
 		blk_mq_end_request(rq, ret);
@@ -2804,6 +2859,7 @@ static void blk_mq_plug_issue_direct(struct blk_plug *plug)
 
 	while ((rq = rq_list_pop(&plug->mq_list))) {
 		bool last = rq_list_empty(&plug->mq_list);
+		bool async = blk_pipeline_zwr(rq->q);
 
 		if (hctx != rq->mq_hctx) {
 			if (hctx) {
@@ -2821,7 +2877,7 @@ static void blk_mq_plug_issue_direct(struct blk_plug *plug)
 		case BLK_STS_RESOURCE:
 		case BLK_STS_DEV_RESOURCE:
 			blk_mq_request_bypass_insert(rq, 0);
-			blk_mq_run_hw_queue(hctx, false);
+			blk_mq_run_hw_queue(hctx, async);
 			goto out;
 		default:
 			blk_mq_end_request(rq, ret);
@@ -3091,8 +3147,8 @@ void blk_mq_submit_bio(struct bio *bio)
 	/*
 	 * A BIO that was released from a zone write plug has already been
 	 * through the preparation in this function, already holds a reference
-	 * on the queue usage counter, and is the only write BIO in-flight for
-	 * the target zone. Go straight to preparing a request for it.
+	 * on the queue usage counter. Go straight to preparing a request for
+	 * it.
 	 */
 	if (bio_zone_write_plugging(bio)) {
 		nr_segs = bio->__bi_nr_segments;
@@ -3138,10 +3194,9 @@ void blk_mq_submit_bio(struct bio *bio)
 	if (blk_mq_attempt_bio_merge(q, bio, nr_segs))
 		goto queue_exit;
 
-	if (bio_needs_zone_write_plugging(bio)) {
-		if (blk_zone_plug_bio(bio, nr_segs))
-			goto queue_exit;
-	}
+	if (bio_needs_zone_write_plugging(bio) &&
+	    blk_zone_plug_bio(bio, nr_segs, rq ? rq->mq_ctx->cpu : -1))
+		goto queue_exit;
 
 new_request:
 	if (!rq) {
@@ -3179,7 +3234,8 @@ new_request:
 
 	hctx = rq->mq_hctx;
 	if ((rq->rq_flags & RQF_USE_SCHED) ||
-	    (hctx->dispatch_busy && (q->nr_hw_queues == 1 || !is_sync))) {
+	    (hctx->dispatch_busy && (q->nr_hw_queues == 1 || !is_sync)) ||
+	    blk_mq_preserve_order(rq)) {
 		blk_mq_insert_request(rq, 0);
 		blk_mq_run_hw_queue(hctx, true);
 	} else {
@@ -3679,6 +3735,7 @@ static int blk_mq_hctx_notify_offline(unsigned int cpu, struct hlist_node *node)
 {
 	struct blk_mq_hw_ctx *hctx = hlist_entry_safe(node,
 			struct blk_mq_hw_ctx, cpuhp_online);
+	int ret = 0;
 
 	if (blk_mq_hctx_has_online_cpu(hctx, cpu))
 		return 0;
@@ -3699,12 +3756,24 @@ static int blk_mq_hctx_notify_offline(unsigned int cpu, struct hlist_node *node)
 	 * frozen and there are no requests.
 	 */
 	if (percpu_ref_tryget(&hctx->queue->q_usage_counter)) {
-		while (blk_mq_hctx_has_requests(hctx))
+		while (blk_mq_hctx_has_requests(hctx)) {
+			/*
+			 * The wakeup capable IRQ handler of block device is
+			 * not called during suspend. Skip the loop by checking
+			 * pm_wakeup_pending to prevent the deadlock and improve
+			 * suspend latency.
+			 */
+			if (pm_wakeup_pending()) {
+				clear_bit(BLK_MQ_S_INACTIVE, &hctx->state);
+				ret = -EBUSY;
+				break;
+			}
 			msleep(5);
+		}
 		percpu_ref_put(&hctx->queue->q_usage_counter);
 	}
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -3969,7 +4038,7 @@ blk_mq_alloc_hctx(struct request_queue *q, struct blk_mq_tag_set *set,
 	struct blk_mq_hw_ctx *hctx;
 	gfp_t gfp = GFP_NOIO | __GFP_NOWARN | __GFP_NORETRY;
 
-	hctx = kzalloc_node(sizeof(struct blk_mq_hw_ctx), gfp, node);
+	hctx = kzalloc_node(sizeof(struct blk_mq_hw_ctx_priv), gfp, node);
 	if (!hctx)
 		goto fail_alloc_hctx;
 
@@ -3986,6 +4055,7 @@ blk_mq_alloc_hctx(struct request_queue *q, struct blk_mq_tag_set *set,
 	INIT_LIST_HEAD(&hctx->dispatch);
 	INIT_HLIST_NODE(&hctx->cpuhp_dead);
 	INIT_HLIST_NODE(&hctx->cpuhp_online);
+	mutex_init(&to_hctx_priv(hctx)->zwp_mutex);
 	hctx->queue = q;
 	hctx->flags = set->flags & ~BLK_MQ_F_TAG_QUEUE_SHARED;
 

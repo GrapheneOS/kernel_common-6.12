@@ -705,8 +705,10 @@ config MST_IRQ
 	  Support MStar Interrupt Controller.
 
 config MTK_IRQ
-	bool
+	bool "MediaTek interrupt controller"
 	default ARCH_MEDIATEK
+	help
+	  Support for CIRQ and SYSIRQ interrupt controller in the MediaTek SoC.
 
 config WPCM450_AIC
 	bool "Nuvoton WPCM450 Advanced Interrupt Controller"

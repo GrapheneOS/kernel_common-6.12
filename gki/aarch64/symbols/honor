@@ -584,4 +584,7 @@
   __traceiter_android_vh_append_total_power
   __traceiter_android_rvh_dpm_prepare
   __tracepoint_android_rvh_dpm_prepare
+  sk_net_refcnt_upgrade
+  d_delete
+  filemap_fdatawrite_range_kick
 

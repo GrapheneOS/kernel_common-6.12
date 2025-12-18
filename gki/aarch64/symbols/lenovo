@@ -1598,6 +1598,8 @@
   em_dev_register_perf_domain
   __traceiter_android_vh_cpufreq_online
   __tracepoint_android_vh_cpufreq_online
+  __traceiter_android_rvh_cpufreq_create_policy
+  __tracepoint_android_rvh_cpufreq_create_policy
 
   of_property_read_u64_index
   sysfs_create_files

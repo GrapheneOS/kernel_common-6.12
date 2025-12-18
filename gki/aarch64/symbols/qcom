@@ -1317,6 +1317,7 @@
   gunyah_hypercall_vcpu_run
   gunyah_qtvm_register_notifier
   gunyah_qtvm_unregister_notifier
+  gunyah_reclaim_fw_parcel
   gunyah_rm_call
   gunyah_rm_notifier_register
   gunyah_rm_notifier_unregister
@@ -2245,6 +2246,11 @@
   pci_aer_clear_nonfatal_status
   pci_alloc_irq_vectors_affinity
   pci_assign_resource
+  pci_bus_add_device
+  pci_bus_add_devices
+  pci_bus_assign_resources
+  pci_bus_claim_resources
+  pci_bus_size_bridges
   pci_bus_type
   pci_clear_master
   pci_dev_get
@@ -2255,11 +2261,13 @@
   pci_disable_device
   pci_disable_msi
   pci_ecam_create
+  pci_ecam_free
   pci_ecam_map_bus
   pcie_capability_clear_and_set_word_unlocked
   pcie_capability_read_word
   pci_enable_device
   pci_find_ext_capability
+  pci_flags
   pci_free_irq_vectors
   pci_generic_config_read
   pci_generic_config_write
@@ -2282,13 +2290,16 @@
   pci_request_region
   pci_restore_state
   pci_save_state
+  pci_scan_root_bus_bridge
   pci_set_master
   pci_set_power_state
+  pci_stop_and_remove_bus_device_locked
   pci_store_saved_state
   pci_unregister_driver
   pci_walk_bus
   pci_write_config_dword
   pci_write_config_word
+  pcie_bus_configure_settings
   pcpu_alloc_noprof
   pcpu_nr_pages
   __percpu_down_read
@@ -3327,6 +3338,7 @@
   trace_event_reg
   trace_get_event_file
   trace_handle_return
+  __traceiter_android_rvh___set_task_cpu
   __traceiter_android_rvh_account_irq
   __traceiter_android_rvh_after_dequeue_task
   __traceiter_android_rvh_after_enqueue_task
@@ -3357,6 +3369,7 @@
   __traceiter_android_rvh_get_nohz_timer_target
   __traceiter_android_rvh_gh_after_vcpu_run
   __traceiter_android_rvh_gh_before_vcpu_run
+  __traceiter_android_rvh_gh_note_fw_parcel
   __traceiter_android_rvh_gh_vcpu_release
   __traceiter_android_rvh_gh_vm_release
   __traceiter_android_rvh_gic_v3_set_affinity
@@ -3473,6 +3486,7 @@
   __traceiter_suspend_resume
   __traceiter_xdp_exception
   trace_output_call
+  __tracepoint_android_rvh___set_task_cpu
   __tracepoint_android_rvh_account_irq
   __tracepoint_android_rvh_after_dequeue_task
   __tracepoint_android_rvh_after_enqueue_task
@@ -3503,6 +3517,7 @@
   __tracepoint_android_rvh_get_nohz_timer_target
   __tracepoint_android_rvh_gh_after_vcpu_run
   __tracepoint_android_rvh_gh_before_vcpu_run
+  __tracepoint_android_rvh_gh_note_fw_parcel
   __tracepoint_android_rvh_gh_vcpu_release
   __tracepoint_android_rvh_gh_vm_release
   __tracepoint_android_rvh_gic_v3_set_affinity

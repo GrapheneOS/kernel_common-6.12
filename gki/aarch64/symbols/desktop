@@ -1,3 +1,38 @@
 [abi_symbol_list]
-# required by panthor.ko
+  clk_disable
+  clk_enable
+  clk_prepare
+  clk_unprepare
+  __const_udelay
+  _dev_err
+  devm_clk_get
+  devm_kmalloc
+  devm_platform_ioremap_resource
+  devm_regulator_get_optional
+  _dev_notice
   drm_fdinfo_print_size
+  jiffies_to_usecs
+  ktime_get
+  log_post_read_mmio
+  log_post_write_mmio
+  log_read_mmio
+  log_write_mmio
+  module_layout
+  of_device_get_match_data
+  of_genpd_add_provider_onecell
+  __platform_driver_register
+  platform_driver_unregister
+  pm_genpd_add_subdomain
+  pm_genpd_init
+  _printk
+  __put_task_struct
+  regmap_read
+  regmap_update_bits_base
+  regmap_write
+  regulator_disable
+  regulator_enable
+  __stack_chk_fail
+  syscon_regmap_lookup_by_compatible
+  syscon_regmap_lookup_by_phandle
+  usleep_range_state
+  utf8_data_table
