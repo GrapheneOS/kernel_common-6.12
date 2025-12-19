@@ -484,6 +484,7 @@
   __devm_pwmchip_add
   devm_pwmchip_alloc
   devm_pwm_get
+  devm_pwrseq_device_register
   devm_register_reboot_notifier
   devm_register_sys_off_handler
   devm_regmap_add_irq_chip
@@ -2012,6 +2013,7 @@
   put_unused_fd
   put_vaddr_frames
   pwm_apply_might_sleep
+  pwrseq_device_get_drvdata
   queue_delayed_work_on
   queue_work_on
   radix_tree_insert
@@ -2640,6 +2642,7 @@
   __traceiter_android_rvh_set_task_cpu
   __traceiter_android_rvh_set_user_nice_locked
   __traceiter_android_rvh_swap_read_folio_bdev_sync
+  __traceiter_android_rvh_task_fits_cpu
   __traceiter_android_rvh_try_to_wake_up_success
   __traceiter_android_rvh_uclamp_eff_get
   __traceiter_android_rvh_ufs_complete_init
@@ -2781,6 +2784,7 @@
   __tracepoint_android_rvh_set_task_cpu
   __tracepoint_android_rvh_set_user_nice_locked
   __tracepoint_android_rvh_swap_read_folio_bdev_sync
+  __tracepoint_android_rvh_task_fits_cpu
   __tracepoint_android_rvh_try_to_wake_up_success
   __tracepoint_android_rvh_uclamp_eff_get
   __tracepoint_android_rvh_ufs_complete_init
