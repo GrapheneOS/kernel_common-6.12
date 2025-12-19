@@ -85,7 +85,7 @@
 #include <trace/hooks/dwc3.h>
 #include <trace/hooks/typec.h>
 #include <trace/hooks/cdc_ether.h>
-
+#include <trace/hooks/sound.h>
 /*
  * Export tracepoints that act as a bare tracehook (ie: have no trace event
  * associated with them) to allow external modules to probe them.
@@ -760,3 +760,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_free_swap_slot_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_folio_alloc_swap_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_pick_swap_device_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_folio_end_writeback);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_snd_pcm_check_no_buffer);
