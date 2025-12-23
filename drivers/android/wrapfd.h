@@ -9,6 +9,7 @@
 #define _LINUX_WRAPFD_H
 
 union wrapfd_mappable {
+	struct dma_buf *dmabuf;
 };
 
 /*

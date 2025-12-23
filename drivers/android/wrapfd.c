@@ -61,6 +61,265 @@ struct wrap_content {
 	struct wrap_content_operations *ops;
 };
 
+/* dmabuf content */
+struct wrap_content_dmabuf {
+	struct wrap_content content;
+	struct dma_buf *dmabuf;
+	bool writable;
+};
+
+static int dmabuf_content_create_wrap(struct wrap_content *content,
+				      struct wrap_ctx *ctx)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+	return anon_inode_getfd("[wrapfd]", &wrap_fops, ctx,
+				dmabuf_content->writable ? O_RDWR : O_RDONLY);
+}
+
+static struct miscdevice wrapfd_misc;
+
+static unsigned int init_bio_data(struct sg_table *sgtbl,
+				  size_t offset, size_t len,
+				  struct bio_vec *bvec)
+{
+	struct scatterlist *sg;
+	unsigned int count = 0;
+	size_t end_offs = 0;
+	unsigned int i;
+	size_t sg_len;
+
+	for_each_sg(sgtbl->sgl, sg, sgtbl->nents, i) {
+		end_offs += sg->length;
+		if (end_offs <= offset)
+			continue;
+
+		sg_len = end_offs - offset;
+		bvec[count].bv_page = sg_page(sg);
+		bvec[count].bv_offset = sg->offset + sg->length - sg_len;
+		if (sg_len >= len) {
+			bvec[count++].bv_len = len;
+			break;
+		}
+		bvec[count++].bv_len = sg_len;
+		offset += sg_len;
+		len -= sg_len;
+	}
+
+	return count;
+}
+
+static int dmabuf_content_load(struct wrap_content *content, struct file *file,
+			       unsigned long file_offs, unsigned long buf_offs,
+			       unsigned long len)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+	struct dma_buf_attachment *attachment;
+	unsigned int bvec_size;
+	struct sg_table *sgtbl;
+	struct bio_vec *bvec;
+	struct iov_iter iter;
+	struct kiocb kiocb;
+	int ret;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+
+	if (file_offs + len > dmabuf_content->dmabuf->size - buf_offs)
+		return -EINVAL;
+
+	attachment = dma_buf_attach(dmabuf_content->dmabuf,
+				    wrapfd_misc.this_device);
+	if (IS_ERR(attachment))
+		return PTR_ERR(attachment);
+
+	sgtbl = dma_buf_map_attachment(attachment, DMA_FROM_DEVICE);
+	if (IS_ERR(sgtbl)) {
+		dma_buf_detach(dmabuf_content->dmabuf, attachment);
+		return PTR_ERR(sgtbl);
+	}
+
+	dma_buf_mangle_sg_table(sgtbl);
+
+	bvec = kvcalloc(sgtbl->nents, sizeof(*bvec), GFP_KERNEL);
+	if (!bvec) {
+		dma_buf_unmap_attachment(attachment, sgtbl, DMA_FROM_DEVICE);
+		dma_buf_detach(dmabuf_content->dmabuf, attachment);
+		return -ENOMEM;
+	}
+
+	bvec_size = init_bio_data(sgtbl, buf_offs, len, bvec);
+	iov_iter_bvec(&iter, ITER_DEST, bvec, bvec_size, len);
+	init_sync_kiocb(&kiocb, file);
+	kiocb.ki_pos = file_offs;
+	kiocb.ki_flags |= IOCB_DIRECT;
+
+	while (kiocb.ki_pos < file_offs + len) {
+		ret = vfs_iocb_iter_read(file, &kiocb, &iter);
+		if (ret <= 0)
+			break;
+	}
+
+	kvfree(bvec);
+	dma_buf_unmap_attachment(attachment, sgtbl, DMA_FROM_DEVICE);
+	dma_buf_detach(dmabuf_content->dmabuf, attachment);
+
+	return ret < 0 ? ret : 0;
+}
+
+static int dmabuf_content_mmap_prepare(struct wrap_content *content,
+				       struct vm_area_struct *vma)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+	if (vma->vm_flags & VM_MAYWRITE) {
+		if (!dmabuf_content->writable)
+			return -EINVAL;
+	}
+
+	vm_flags_set(vma, VM_SHARED | VM_PFNMAP | VM_DONTEXPAND | VM_DONTDUMP);
+
+	return 0;
+}
+
+static int dmabuf_content_mmap(struct wrap_content *content,
+			       struct vm_area_struct *vma)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+	int ret;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+
+	ret = dma_buf_mmap(dmabuf_content->dmabuf, vma, 0);
+	if (ret)
+		return ret;
+
+	return 0;
+}
+
+static vm_fault_t dmabuf_content_fault(struct wrap_content *content,
+				       struct vm_fault *vmf)
+{
+	return vmf->vma->vm_ops->fault(vmf);
+}
+
+static void dmabuf_content_free(struct wrap_content *content)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+	if (dmabuf_content->dmabuf)
+		dma_buf_put(dmabuf_content->dmabuf);
+	kfree(dmabuf_content);
+}
+
+static struct wrap_content *
+dmabuf_content_make_writable(struct wrap_content *content, bool writable)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+	dmabuf_content->writable = writable;
+
+	return content;
+}
+
+static bool dmabuf_content_is_writable(struct wrap_content *content)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+
+	return dmabuf_content->writable;
+}
+
+
+static void dmabuf_content_show_fdinfo(struct wrap_content *content,
+				       struct seq_file *m)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+	struct dma_buf *dmabuf;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+	seq_printf(m, "type:\tdmabuf\n");
+
+	dmabuf = dmabuf_content->dmabuf;
+	seq_printf(m, "size:\t%zu\n", dmabuf->size);
+	/* Don't count the temporary reference taken inside procfs seq_show */
+	seq_printf(m, "count:\t%ld\n", file_count(dmabuf->file) - 1);
+	seq_printf(m, "exp_name:\t%s\n", dmabuf->exp_name);
+	spin_lock(&dmabuf->name_lock);
+	if (dmabuf->name)
+		seq_printf(m, "name:\t%s\n", dmabuf->name);
+	spin_unlock(&dmabuf->name_lock);
+}
+
+static int
+dmabuf_content_get_mappable(struct wrap_content *content, struct device *dev,
+			    union wrapfd_mappable *mappable)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+	mappable->dmabuf = dmabuf_content->dmabuf;
+
+	return 0;
+}
+
+static int dmabuf_content_ioctl(struct wrap_content *content,
+				unsigned int cmd, unsigned long arg)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+	struct file *file;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+	file = dmabuf_content->dmabuf->file;
+
+	return file->f_op->unlocked_ioctl(file, cmd, arg);
+}
+
+static struct wrap_content_operations dmabuf_content_ops = {
+	.create_wrap		= dmabuf_content_create_wrap,
+	.load			= dmabuf_content_load,
+	.mmap_prepare		= dmabuf_content_mmap_prepare,
+	.mmap			= dmabuf_content_mmap,
+	.fault			= dmabuf_content_fault,
+	.make_writable		= dmabuf_content_make_writable,
+	.is_writable		= dmabuf_content_is_writable,
+	.free			= dmabuf_content_free,
+	.show_fdinfo		= dmabuf_content_show_fdinfo,
+	.get_mappable		= dmabuf_content_get_mappable,
+	.ioctl			= dmabuf_content_ioctl,
+};
+
+static struct wrap_content *alloc_dmabuf_content(struct dma_buf *dmabuf,
+						 bool writable)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+
+	dmabuf_content = kmalloc(sizeof(*dmabuf_content), GFP_KERNEL);
+	if (!dmabuf_content)
+		return NULL;
+
+	get_dma_buf(dmabuf);
+	dmabuf_content->dmabuf = dmabuf;
+	dmabuf_content->writable = writable;
+	dmabuf_content->content.ops = &dmabuf_content_ops;
+
+	return &dmabuf_content->content;
+}
+
 /* Generic wrapfd */
 struct wrap_owner {
 	struct task_struct *task;
@@ -648,7 +907,19 @@ static const struct file_operations wrap_fops = {
 
 static struct wrap_content *create_content_for(int fd, unsigned long prot)
 {
-	/* TODO */
+	struct wrap_content *content;
+	struct dma_buf *dmabuf;
+
+	dmabuf = dma_buf_get(fd);
+	if (!IS_ERR(dmabuf)) {
+		bool writable = !!(prot & PROT_WRITE);
+
+		content = alloc_dmabuf_content(dmabuf, writable);
+		dma_buf_put(dmabuf);
+
+		return content ? content : ERR_PTR(-ENOMEM);
+	}
+
 	return ERR_PTR(-EINVAL);
 }
 
