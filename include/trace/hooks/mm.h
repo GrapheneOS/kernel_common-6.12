@@ -358,6 +358,9 @@ DECLARE_HOOK(android_vh_page_cache_ra_unbounded,
 DECLARE_HOOK(android_vh_force_page_cache_ra,
 	TP_PROTO(struct address_space *mapping, u64 *data),
 	TP_ARGS(mapping, data));
+DECLARE_HOOK(android_vh_filemap_fault_post_folio_locked,
+	TP_PROTO(struct inode *inode, struct folio *folio, pgoff_t index),
+	TP_ARGS(inode, folio, index));
 DECLARE_HOOK(android_vh_filemap_fault_folio_locked,
 	TP_PROTO(struct inode *inode, struct folio *folio, pgoff_t index),
 	TP_ARGS(inode, folio, index));

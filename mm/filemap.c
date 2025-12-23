@@ -3593,6 +3593,8 @@ retry_find:
 		goto page_not_uptodate;
 	}
 
+	trace_android_vh_filemap_fault_post_folio_locked(inode, folio, index);
+
 	/*
 	 * We've made it this far and we had to drop our mmap_lock, now is the
 	 * time to return to the upper layer and have it re-find the vma and
