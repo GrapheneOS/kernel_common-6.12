@@ -2600,6 +2600,7 @@
   drm_crtc_vblank_on
   drm_crtc_vblank_put
   drm_debugfs_create_files
+  drm_debugfs_remove_files
   drm_edid_read_custom
   drm_encoder_cleanup
   drm_encoder_init
