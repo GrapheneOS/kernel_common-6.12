@@ -10,7 +10,6 @@
 #include <linux/init.h>
 #include <linux/kstrtox.h>
 #include <linux/mm.h>
-#include <linux/moduleparam.h>
 #include <linux/pagemap.h>
 #include <linux/page_size_compat.h>
 #include <linux/swap.h>
@@ -26,15 +25,11 @@ EXPORT_SYMBOL_GPL(page_shift_compat_enabled);
 int page_shift_compat __ro_after_init = MIN_PAGE_SHIFT_COMPAT;
 EXPORT_SYMBOL_GPL(page_shift_compat);
 
-static int __init page_shift_params(char *param, char *val,
-				    const char *unused, void *arg)
+static int __init early_page_shift_compat(char *buf)
 {
 	int ret;
 
-	if (strcmp(param, "page_shift") != 0)
-		return 0;
-
-	ret = kstrtoint(val, 10, &page_shift_compat);
+	ret = kstrtoint(buf, 10, &page_shift_compat);
 	if (ret)
 		return ret;
 
@@ -50,20 +45,7 @@ static int __init page_shift_params(char *param, char *val,
 
 	return 0;
 }
-
-static int __init init_page_shift_compat(void)
-{
-	char *err;
-
-	err = parse_args("page_shift", saved_command_line, NULL, 0, 0, 0, NULL,
-			page_shift_params);
-
-	if (IS_ERR(err))
-		return -EINVAL;
-
-	return 0;
-}
-pure_initcall(init_page_shift_compat);
+early_param("page_shift", early_page_shift_compat);
 
 static int __init init_mmap_rnd_bits(void)
 {
