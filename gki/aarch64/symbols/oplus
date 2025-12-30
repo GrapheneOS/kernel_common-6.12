@@ -376,6 +376,7 @@
   __traceiter_android_vh_tune_mmap_readaround
   __traceiter_android_vh_tune_swappiness
   __traceiter_android_vh_tune_inactive_ratio
+  __traceiter_android_vh_mem_cgroup_flush_stats_bypass
   __traceiter_android_vh_unreserve_highatomic_bypass
   __traceiter_android_vh_vmscan_kswapd_done
   __traceiter_android_vh_page_cache_ra_order_bypass
@@ -521,6 +522,7 @@
   __tracepoint_android_vh_tune_mmap_readaround
   __tracepoint_android_vh_tune_swappiness
   __tracepoint_android_vh_tune_inactive_ratio
+  __tracepoint_android_vh_mem_cgroup_flush_stats_bypass
   __tracepoint_android_vh_unreserve_highatomic_bypass
   __tracepoint_android_vh_vmscan_kswapd_done
   __tracepoint_android_vh_page_cache_ra_order_bypass
