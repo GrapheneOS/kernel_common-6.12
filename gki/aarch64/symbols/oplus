@@ -2,6 +2,7 @@
   address_space_init_once
   alarm_start
   backing_file_open
+  backing_file_user_path
   backing_tmpfile_open
   bio_add_page
   bio_associate_blkg
