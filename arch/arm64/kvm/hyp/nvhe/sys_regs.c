@@ -120,13 +120,13 @@ static const struct pvm_ftr_bits pvmid_aa64pfr1[] = {
  * - 40-bit IPA
  * - 16-bit ASID
  */
-// TODO: check the tgran
 static const struct pvm_ftr_bits pvmid_aa64mmfr0[] = {
 	MAX_FEAT_ENUM(ID_AA64MMFR0_EL1, PARANGE, 40),
 	MAX_FEAT_ENUM(ID_AA64MMFR0_EL1, ASIDBITS, 16),
 	MAX_FEAT(ID_AA64MMFR0_EL1, BIGEND, IMP),
 	MAX_FEAT(ID_AA64MMFR0_EL1, SNSMEM, IMP),
 	MAX_FEAT(ID_AA64MMFR0_EL1, BIGENDEL0, IMP),
+	MAX_FEAT_ENUM(ID_AA64MMFR0_EL1, TGRAN16, IMP),
 	MAX_FEAT(ID_AA64MMFR0_EL1, EXS, IMP),
 	FEAT_END
 };
