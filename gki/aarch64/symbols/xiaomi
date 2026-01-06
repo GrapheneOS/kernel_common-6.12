@@ -126,6 +126,8 @@
   __tracepoint_android_vh_sysrq_crash
   __traceiter_android_rvh_schedule_bug
   __tracepoint_android_rvh_schedule_bug
+  __traceiter_android_vh_save_vmalloc_stack
+  __tracepoint_android_vh_save_vmalloc_stack
 
 #required by metis.ko module
   __traceiter_android_vh_rwsem_read_wait_start
