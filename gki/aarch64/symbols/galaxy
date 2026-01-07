@@ -7,6 +7,7 @@
   compact_node_async
   delete_from_swap_cache
   dma_heap_try_get_pool_size_kb
+  dummy_irq_chip
   file_bdev
   filemap_fdatawrite_range_kick
   file_ra_state_init
@@ -25,9 +26,13 @@
   mas_walk
   mas_prev
   mas_next
+  mii_check_media
+  mii_ethtool_gset
   mm_access
   param_set_uint
+  phy_mii_ioctl
   pidfd_get_pid
+  platform_get_ethdev_address
   prep_compound_page
   prep_new_hpage
   proc_set_size
@@ -213,6 +218,23 @@
   __tracepoint_android_vh_handle_add_skipped_blks
   __tracepoint_android_vh_handle_add_blks_map
   __tracepoint_android_vh_handle_get_b_info
+  usb_alloc_dev
+  usb_set_device_state
+  usbnet_change_mtu
+  usbnet_defer_kevent
+  usbnet_get_drvinfo
+  usbnet_get_endpoints
+  usbnet_get_link
+  usbnet_get_link_ksettings_mii
+  usbnet_get_msglevel
+  usbnet_nway_reset
+  usbnet_read_cmd
+  usbnet_read_cmd_nopm
+  usbnet_set_link_ksettings_mii
+  usbnet_set_msglevel
+  usbnet_write_cmd
+  usbnet_write_cmd_async
+  usbnet_write_cmd_nopm
   yield
   blkcg_root
   blkcg_activate_policy
