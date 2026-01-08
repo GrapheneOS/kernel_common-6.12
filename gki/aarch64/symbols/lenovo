@@ -1676,6 +1676,7 @@
   cpu_irqtime
   cpupri_find_fitness
   cpu_scale
+  cpuset_cpus_allowed
   css_next_child
   css_task_iter_end
   css_task_iter_next

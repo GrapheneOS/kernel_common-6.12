@@ -113,6 +113,8 @@
   blk_mq_unfreeze_queue
   blk_mq_unquiesce_queue
   blk_mq_virtio_map_queues
+  blk_queue_flag_clear
+  blk_queue_flag_set
   blk_revalidate_disk_zones
   blk_rq_map_kern
   __blk_rq_map_sg
@@ -272,6 +274,7 @@
   __cpu_active_mask
   cpu_all_bits
   cpu_bit_bitmap
+  __cpu_dying_mask
   cpufreq_add_update_util_hook
   cpufreq_cpu_get
   cpufreq_cpu_put
@@ -397,6 +400,7 @@
   delayed_work_timer_fn
   del_gendisk
   dentry_open
+  desc_to_gpio
   destroy_workqueue
   dev_add_pack
   dev_addr_add
@@ -554,6 +558,8 @@
   devm_memremap
   devm_memunmap
   devm_mfd_add_devices
+  devm_mipi_dsi_attach
+  devm_mipi_dsi_device_register_full
   devm_mmc_alloc_host
   devm_nvmem_cell_get
   devm_nvmem_device_get
@@ -605,6 +611,7 @@
   devm_spi_register_controller
   devm_thermal_of_zone_register
   devm_thermal_of_zone_unregister
+  devm_usb_get_phy
   devm_watchdog_register_device
   dev_nit_active
   _dev_notice
@@ -814,6 +821,7 @@
   drm_atomic_state_default_release
   __drm_atomic_state_free
   drm_atomic_state_init
+  drm_bridge_add
   drm_bridge_attach
   drm_calc_timestamping_constants
   drm_compat_ioctl
@@ -1228,6 +1236,7 @@
   hw_pressure
   __hw_protection_shutdown
   i2c_add_adapter
+  i2c_bus_type
   i2c_client_get_device_id
   i2c_del_adapter
   i2c_del_driver
@@ -1459,6 +1468,8 @@
   kernel_cpustat
   kernel_kobj
   kernel_listen
+  kernel_neon_begin
+  kernel_neon_end
   kernel_param_lock
   kernel_param_unlock
   kernel_power_off
@@ -1646,6 +1657,7 @@
   media_request_get_by_fd
   media_request_object_complete
   media_request_put
+  mem_alloc_profiling_key
   memcg_sockets_enabled_key
   memchr
   memchr_inv
@@ -1806,6 +1818,7 @@
   net_selftest
   net_selftest_get_count
   net_selftest_get_strings
+  next_arg
   nf_conntrack_destroy
   nf_register_net_hooks
   nf_unregister_net_hooks
@@ -1870,6 +1883,7 @@
   of_find_compatible_node
   of_find_device_by_node
   of_find_matching_node_and_match
+  of_find_mipi_dsi_host_by_node
   of_find_node_by_name
   of_find_node_by_phandle
   of_find_node_by_type
@@ -1962,12 +1976,15 @@
   param_ops_bool
   param_ops_byte
   param_ops_charp
+  param_ops_hexint
   param_ops_int
+  param_ops_long
   param_ops_string
   param_ops_uint
   param_ops_ullong
   param_ops_ulong
   param_set_bool
+  param_set_charp
   param_set_copystring
   param_set_int
   param_set_uint
@@ -1978,6 +1995,7 @@
   pci_alloc_irq_vectors_affinity
   pci_ats_supported
   pci_bus_type
+  pci_choose_state
   pci_device_group
   pci_device_is_present
   pci_dev_put
@@ -2108,6 +2126,7 @@
   phy_stop
   phy_support_eee
   phy_suspend
+  pick_task
   pid_task
   pid_vnr
   pinconf_generic_parse_dt_config
@@ -2358,6 +2377,7 @@
   regulator_bulk_disable
   regulator_bulk_enable
   regulator_count_voltages
+  regulator_desc_list_voltage_linear
   regulator_disable
   regulator_disable_regmap
   regulator_enable
@@ -2383,6 +2403,7 @@
   regulator_set_active_discharge_regmap
   regulator_set_bypass_regmap
   regulator_set_current_limit
+  regulator_set_current_limit_regmap
   regulator_set_load
   regulator_set_mode
   regulator_set_ramp_delay_regmap
@@ -2505,6 +2526,8 @@
   __scsi_iterate_devices
   scsi_print_sense_hdr
   scsi_unblock_requests
+  __scx_ops_enabled
+  __scx_switched_all
   sdio_claim_host
   sdio_claim_irq
   sdio_disable_func
@@ -2662,6 +2685,7 @@
   __sk_flush_backlog
   sk_free
   sk_ioctl
+  skip_spaces
   __sk_mem_reclaim
   sk_msg_alloc
   sk_msg_clone
@@ -2706,6 +2730,7 @@
   snd_soc_add_component_controls
   snd_soc_bytes_info_ext
   snd_soc_bytes_tlv_callback
+  snd_soc_card_get_kcontrol
   snd_soc_card_jack_new
   snd_soc_component_exit_regmap
   snd_soc_component_initialize
@@ -2714,7 +2739,9 @@
   snd_soc_component_set_jack
   snd_soc_component_update_bits
   snd_soc_component_write
+  snd_soc_dai_set_fmt
   snd_soc_dai_set_sysclk
+  snd_soc_dai_set_tdm_slot
   snd_soc_dapm_add_routes
   snd_soc_dapm_disable_pin
   snd_soc_dapm_enable_pin
@@ -2729,6 +2756,7 @@
   snd_soc_dapm_put_pin_switch
   snd_soc_dapm_put_volsw
   snd_soc_dapm_sync
+  snd_soc_get_enum_double
   snd_soc_get_volsw
   snd_soc_info_enum_double
   snd_soc_info_volsw
@@ -2737,6 +2765,7 @@
   snd_soc_of_get_dai_link_codecs
   snd_soc_params_to_bclk
   snd_soc_poweroff
+  snd_soc_put_enum_double
   snd_soc_put_volsw
   snd_soc_register_card
   snd_soc_register_component
@@ -2748,6 +2777,8 @@
   snd_soc_tplg_component_remove
   snd_soc_unregister_card
   snd_soc_unregister_component
+  snd_usb_register_platform_ops
+  snd_usb_unregister_platform_ops
   snprintf
   soc_device_register
   soc_device_unregister
@@ -2802,6 +2833,7 @@
   __spi_register_driver
   spi_setup
   spi_sync
+  spi_write_then_read
   __splice_from_pipe
   split_page
   spmi_controller_add
@@ -2843,6 +2875,7 @@
   strlen
   strncasecmp
   strncat
+  strnchr
   strncmp
   strncpy
   strncpy_from_user
@@ -3028,17 +3061,18 @@
   __traceiter_android_vh_binder_restore_priority
   __traceiter_android_vh_binder_set_priority
   __traceiter_android_vh_binder_transaction_init
-  __traceiter_android_vh_compaction_exit
-  __traceiter_android_vh_compaction_try_to_compact_exit
   __traceiter_android_vh_cgroup_attach
   __traceiter_android_vh_cgroup_set_task
   __traceiter_android_vh_check_bpf_syscall
   __traceiter_android_vh_check_file_open
   __traceiter_android_vh_check_mmap_file
+  __traceiter_android_vh_compaction_exit
+  __traceiter_android_vh_compaction_try_to_compact_exit
   __traceiter_android_vh_cpufreq_fast_switch
   __traceiter_android_vh_cpufreq_target
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
+  __traceiter_android_vh_dump_dl_server
   __traceiter_android_vh_freq_qos_add_request
   __traceiter_android_vh_freq_qos_remove_request
   __traceiter_android_vh_freq_qos_update_request
@@ -3058,7 +3092,6 @@
   __traceiter_android_vh_rwsem_read_wait_start
   __traceiter_android_vh_rwsem_write_wait_finish
   __traceiter_android_vh_rwsem_write_wait_start
-  __traceiter_android_vh_dump_dl_server
   __traceiter_android_vh_sched_pelt_multiplier
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_setscheduler_uclamp
@@ -3157,17 +3190,18 @@
   __tracepoint_android_vh_binder_restore_priority
   __tracepoint_android_vh_binder_set_priority
   __tracepoint_android_vh_binder_transaction_init
-  __tracepoint_android_vh_compaction_exit
-  __tracepoint_android_vh_compaction_try_to_compact_exit
   __tracepoint_android_vh_cgroup_attach
   __tracepoint_android_vh_cgroup_set_task
   __tracepoint_android_vh_check_bpf_syscall
   __tracepoint_android_vh_check_file_open
   __tracepoint_android_vh_check_mmap_file
+  __tracepoint_android_vh_compaction_exit
+  __tracepoint_android_vh_compaction_try_to_compact_exit
   __tracepoint_android_vh_cpufreq_fast_switch
   __tracepoint_android_vh_cpufreq_target
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
+  __tracepoint_android_vh_dump_dl_server
   __tracepoint_android_vh_freq_qos_add_request
   __tracepoint_android_vh_freq_qos_remove_request
   __tracepoint_android_vh_freq_qos_update_request
@@ -3187,7 +3221,6 @@
   __tracepoint_android_vh_rwsem_read_wait_start
   __tracepoint_android_vh_rwsem_write_wait_finish
   __tracepoint_android_vh_rwsem_write_wait_start
-  __tracepoint_android_vh_dump_dl_server
   __tracepoint_android_vh_sched_pelt_multiplier
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_setscheduler_uclamp
@@ -3467,11 +3500,14 @@
   usb_interface_id
   usb_kill_anchored_urbs
   usb_kill_urb
+  usb_lock_device_for_reset
   usb_match_id
   usb_match_one_id
   usb_mon_deregister
   usb_mon_register
   usb_os_desc_prepare_interf_dir
+  usb_otg_state_string
+  usb_phy_set_charger_current
   usb_poison_urb
   usb_put_dev
   usb_put_function
@@ -3809,4 +3845,14 @@
   zlib_inflateInit2
   zlib_inflateReset
   zlib_inflate_workspacesize
+  zs_compact
+  zs_create_pool
+  zs_destroy_pool
+  zs_free
+  zs_get_total_pages
+  zs_huge_class_size
   zs_lookup_class_index
+  zs_malloc
+  zs_map_object
+  zs_pool_stats
+  zs_unmap_object

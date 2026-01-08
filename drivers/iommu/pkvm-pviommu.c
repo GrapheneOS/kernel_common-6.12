@@ -433,6 +433,8 @@ static int pviommu_probe(struct platform_device *pdev)
 	if (res.a0 < 0)
 		return -ENODEV;
 
+	/* Hardcoded value for now as there is now way to probe this information. */
+	pv->iommu.max_pasids = 256;
 	pviommu_ops.pgsize_bitmap = res.a0;
 
 	ret = iommu_device_sysfs_add(&pv->iommu, dev, NULL,
