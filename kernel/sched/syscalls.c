@@ -1328,6 +1328,7 @@ long sched_setaffinity(pid_t pid, const struct cpumask *in_mask)
 	};
 
 	retval = __sched_setaffinity(p, &ac);
+	trace_android_rvh_sched_setaffinity(p, in_mask, &retval);
 	kfree(ac.user_mask);
 
 	return retval;
