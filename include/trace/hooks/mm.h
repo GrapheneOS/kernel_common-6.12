@@ -212,6 +212,13 @@ DECLARE_HOOK(android_vh_cache_show,
 DECLARE_HOOK(android_vh_free_unref_page_bypass,
 	TP_PROTO(struct page *page, int order, int migratetype, bool *bypass),
 	TP_ARGS(page, order, migratetype, bypass));
+DECLARE_HOOK(android_vh_folios_put_refs_direct_free,
+	TP_PROTO(struct folio *folio, unsigned int nr_refs,
+		 struct lruvec **lruvec, bool *direct_free),
+	TP_ARGS(folio, nr_refs, lruvec, direct_free));
+DECLARE_HOOK(android_vh_free_pages_and_swap_cache,
+	TP_PROTO(struct folio *folio),
+	TP_ARGS(folio));
 DECLARE_HOOK(android_vh_kvmalloc_node_use_vmalloc,
 	TP_PROTO(size_t size, gfp_t *kmalloc_flags, bool *use_vmalloc),
 	TP_ARGS(size, kmalloc_flags, use_vmalloc));
