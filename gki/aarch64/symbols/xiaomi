@@ -576,3 +576,6 @@ __tracepoint_android_vh_free_pages_and_swap_cache
 __traceiter_android_vh_free_pages_and_swap_cache
 __filemap_remove_folio
 inode_add_lru
+
+__traceiter_android_vh_fuse_request_fetch
+__tracepoint_android_vh_fuse_request_fetch
