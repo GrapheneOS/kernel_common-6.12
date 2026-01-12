@@ -1,5 +1,6 @@
 [abi_symbol_list]
   activate_task
+  active_load_balance_cpu_stop
   add_cpu
   add_timer
   add_timer_on
@@ -659,6 +660,7 @@
   do_SAK
   do_send_sig_info
   do_trace_netlink_extack
+  double_rq_lock
   do_wait_intr_irq
   down
   downgrade_write
@@ -959,6 +961,7 @@
   drop_reasons_register_subsys
   drop_reasons_unregister_subsys
   dump_backtrace
+  dump_page
   dump_stack
   dump_tasks
   dw_handle_msi_irq
@@ -1989,6 +1992,8 @@
   platform_irq_count
   __platform_register_drivers
   platform_unregister_drivers
+  plist_add
+  plist_del
   pm_genpd_add_subdomain
   pm_genpd_init
   pm_genpd_remove
@@ -2265,6 +2270,7 @@
   runqueues
   sbitmap_weight
   sched_clock
+  sched_energy_present
   sched_feat_keys
   sched_prio_to_weight
   sched_prio_to_wmult
