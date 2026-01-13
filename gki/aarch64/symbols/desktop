@@ -493,6 +493,7 @@
   dma_heap_get_name
   dma_heap_put
   dmam_alloc_attrs
+  dmam_pool_create
   dma_map_page_attrs
   dma_map_resource
   dma_map_sg_attrs
@@ -980,6 +981,8 @@
   i2c_transfer
   i2c_transfer_buffer_flags
   i2c_verify_client
+  icc_disable
+  icc_enable
   icc_link_create
   icc_node_add
   icc_node_create
@@ -1805,6 +1808,7 @@
   set_normalized_timespec64
   set_page_dirty_lock
   __SetPageMovable
+  sget_dev
   sg_alloc_table
   sg_alloc_table_from_pages_segment
   sget_dev
