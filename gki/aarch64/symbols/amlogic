@@ -140,6 +140,7 @@
   clk_enable
   clk_fixed_factor_ops
   clk_gate_ops
+  clk_gate_restore_context
   clk_get
   __clk_get_hw
   __clk_get_name
@@ -711,6 +712,8 @@
   drm_encoder_cleanup
   drm_encoder_init
   __drm_err
+  drm_event_cancel_free
+  drm_event_reserve_init
   drm_format_info
   drm_format_info_block_height
   drm_format_info_block_width
@@ -1156,12 +1159,18 @@
   inode_nohighmem
   inode_set_bytes
   input_allocate_device
+  input_close_device
   input_event
   input_free_device
+  input_open_device
   input_register_device
+  input_register_handle
+  input_register_handler
   input_set_abs_params
   input_set_capability
   input_unregister_device
+  input_unregister_handle
+  input_unregister_handler
   insert_inode_locked
   invalidate_bdev
   invalidate_inode_buffers
@@ -1538,6 +1547,7 @@
   noop_backing_dev_info
   noop_direct_IO
   noop_llseek
+  nop_mnt_idmap
   nr_cpu_ids
   ns_capable
   ns_to_timespec64
@@ -1835,6 +1845,7 @@
   __pm_runtime_use_autosuspend
   __pm_stay_awake
   pm_stay_awake
+  pm_suspend
   pm_wakeup_dev_event
   pm_wakeup_ws_event
   pm_wq
@@ -2385,6 +2396,7 @@
   system_highpri_wq
   system_long_wq
   system_power_efficient_wq
+  system_state
   system_unbound_wq
   system_wq
   sys_tz
@@ -2536,6 +2548,7 @@
   tty_flip_buffer_push
   tty_get_char_size
   tty_hangup
+  __tty_insert_flip_string_flags
   tty_kref_put
   tty_ldisc_deref
   tty_ldisc_ref
@@ -2546,6 +2559,7 @@
   tty_port_open
   tty_port_register_device
   tty_port_tty_get
+  tty_port_tty_hangup
   tty_port_tty_wakeup
   tty_put_char
   tty_register_driver
@@ -2617,7 +2631,10 @@
   usb_anchor_empty
   usb_anchor_urb
   usb_autopm_get_interface
+  usb_autopm_get_interface_async
+  usb_autopm_get_interface_no_resume
   usb_autopm_put_interface
+  usb_autopm_put_interface_async
   usb_bulk_msg
   usb_clear_halt
   usb_control_msg
@@ -2705,6 +2722,8 @@
   usb_serial_generic_tiocmiwait
   usb_serial_generic_unthrottle
   usb_serial_handle_dcd_change
+  usb_serial_port_softint
+  __usb_serial_register_drivers
   usb_set_interface
   usb_sg_init
   usb_sg_wait
