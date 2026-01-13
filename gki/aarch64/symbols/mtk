@@ -603,6 +603,7 @@
   devm_request_threaded_irq
   __devm_reset_control_get
   devm_reset_controller_register
+  devm_rproc_add
   devm_rtc_allocate_device
   devm_rtc_nvmem_register
   __devm_rtc_register_device
@@ -2467,6 +2468,7 @@
   rproc_alloc
   rproc_boot
   rproc_del
+  rproc_detach
   rproc_free
   rproc_get_by_phandle
   rproc_put
