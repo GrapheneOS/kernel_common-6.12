@@ -1054,10 +1054,11 @@ static struct scx_dispatch_q *find_global_dsq(struct task_struct *p)
 	return global_dsqs[cpu_to_node(task_cpu(p))];
 }
 
-static struct scx_dispatch_q *find_user_dsq(u64 dsq_id)
+struct scx_dispatch_q *find_user_dsq(u64 dsq_id)
 {
 	return rhashtable_lookup_fast(&dsq_hash, &dsq_id, dsq_hash_params);
 }
+EXPORT_SYMBOL_GPL(find_user_dsq);
 
 /*
  * scx_kf_mask enforcement. Some kfuncs can only be called from specific SCX
