@@ -871,6 +871,7 @@ static bool folio_referenced_one(struct folio *folio,
 			if (lru_gen_look_around(&pvmw))
 				referenced++;
 		} else if (pvmw.pte) {
+			trace_android_vh_look_around(&pvmw, folio, vma, &referenced);
 			if (ptep_clear_flush_young_notify(vma, address,
 						pvmw.pte))
 				referenced++;
@@ -1442,6 +1443,8 @@ static __always_inline void __folio_add_file_rmap(struct folio *folio,
 
 	VM_WARN_ON_FOLIO(folio_test_anon(folio), folio);
 
+	trace_android_vh_folio_add_file_rmap(folio, page, nr_pages, level);
+
 	nr = __folio_add_rmap(folio, page, nr_pages, level, &nr_pmdmapped);
 	__folio_mod_stat(folio, nr, nr_pmdmapped);
 
@@ -1561,6 +1564,7 @@ static __always_inline void __folio_remove_rmap(struct folio *folio,
 	 * it's only reliable while mapped.
 	 */
 
+	trace_android_vh_folio_remove_rmap(folio, page, nr_pages, level);
 	munlock_vma_folio(folio, vma);
 }
 

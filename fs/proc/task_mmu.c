@@ -1346,6 +1346,7 @@ static int show_smaps_rollup(struct seq_file *m, void *v)
 	struct vm_area_struct *vma;
 	unsigned long vma_start = 0, last_vma_end = 0;
 	int ret = 0;
+	int nr_contended = 0;
 	VMA_ITERATOR(vmi, mm, 0);
 
 	priv->task = get_proc_task(priv->inode);
@@ -1379,6 +1380,13 @@ static int show_smaps_rollup(struct seq_file *m, void *v)
 		if (mmap_lock_is_contended(mm)) {
 			vma_iter_invalidate(&vmi);
 			mmap_read_unlock(mm);
+			nr_contended++;
+			trace_android_vh_smaps_rollup_contended(mm->map_count,
+					nr_contended, &ret);
+			if (ret) {
+				release_task_mempolicy(priv);
+				goto out_put_mm;
+			}
 			ret = mmap_read_lock_killable(mm);
 			if (ret) {
 				release_task_mempolicy(priv);

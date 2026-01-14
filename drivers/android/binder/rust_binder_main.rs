@@ -299,6 +299,7 @@ impl kernel::Module for BinderModule {
         unsafe { crate::context::CONTEXTS.init() };
 
         // SAFETY: This just accesses global booleans.
+        #[cfg(CONFIG_ANDROID_BINDER_IPC)]
         unsafe {
             #[allow(improper_ctypes)]
             extern "C" {
