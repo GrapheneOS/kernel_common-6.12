@@ -2,7 +2,7 @@
 
 config ANDROID_BINDER_IPC_RUST
 	tristate "Rust version of Android Binder IPC Driver"
-	depends on RUST && ANDROID_BINDER_IPC && ANDROID_BINDERFS
+	depends on RUST && MMU
 	help
 	  This enables the Rust implementation of the Binder driver. At this
 	  time, the Rust implementation can only be built as an alternative to
