@@ -30,14 +30,6 @@
 #define pgcompat_err(fmt, ...) \
 	pr_err("pgcompat [%i (%s)]: " fmt, task_pid_nr(current), current->comm, ## __VA_ARGS__)
 
-#ifdef CONFIG_SHMEM
-extern vm_fault_t shmem_fault(struct vm_fault *vmf);
-#endif	/* CONFIG_SHMEM */
-
-#ifdef CONFIG_F2FS_FS
-extern vm_fault_t f2fs_filemap_fault(struct vm_fault *vmf);
-#endif	/* CONFIG_F2FS_FS */
-
 #define __offset_in_page_log(addr)							\
 ({											\
 	if (static_branch_unlikely(&page_shift_compat_enabled) &&			\

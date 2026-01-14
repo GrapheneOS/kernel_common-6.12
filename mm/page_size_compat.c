@@ -96,29 +96,6 @@ unsigned long ___filemap_len(struct inode *inode, unsigned long pgoff, unsigned 
 	return len;
 }
 
-static inline bool is_shmem_fault(const struct vm_operations_struct *vm_ops)
-{
-#ifdef CONFIG_SHMEM
-	return vm_ops->fault == shmem_fault;
-#else
-	return false;
-#endif
-}
-
-static inline bool is_f2fs_filemap_fault(const struct vm_operations_struct *vm_ops)
-{
-#ifdef CONFIG_F2FS_FS
-	return vm_ops->fault == f2fs_filemap_fault;
-#else
-	return false;
-#endif
-}
-
-static inline bool is_filemap_fault(const struct vm_operations_struct *vm_ops)
-{
-	return vm_ops->fault == filemap_fault;
-}
-
 /*
  * Given a file mapping of 48KiB backed by a file of size 18KiB, the
  * faulting behaviour of the different page-size configurations is
@@ -191,7 +168,6 @@ void ___filemap_fixup(unsigned long addr, unsigned long prot, unsigned long file
 	struct mm_struct *mm = current->mm;
 	unsigned long populate = 0;
 	struct vm_area_struct *vma;
-	const struct vm_operations_struct *vm_ops;
 
 	if (!anon_len)
 		return;
@@ -210,12 +186,8 @@ void ___filemap_fixup(unsigned long addr, unsigned long prot, unsigned long file
 	 */
 	BUG_ON(!vma);
 
-	vm_ops = vma->vm_ops;
-	if (!vm_ops)
-		return;
-
 	/*
-	 * Insert fixup vmas for file backed and shmem backed VMAs.
+	 * Insert fixup vmas for file backed, including tmpfs (shmem) backed, VMAs.
 	 *
 	 * Faulting off the end of a file will result in SIGBUS since there is no
 	 * file page for the given file offset.
@@ -223,9 +195,12 @@ void ___filemap_fixup(unsigned long addr, unsigned long prot, unsigned long file
 	 * shmem pages live in page cache or swap cache. Looking up a page cache
 	 * page with an index (pgoff) beyond the file is invalid and will result
 	 * in shmem_get_folio_gfp() returning -EINVAL.
+	 *
+	 * It's not pratical to maintain a list of vm_ops for the constantly
+	 * changing list of supported filesystems on Android, so only test that
+	 * vm_ops exists.
 	 */
-	if (!is_filemap_fault(vm_ops) && !is_f2fs_filemap_fault(vm_ops) &&
-	    !is_shmem_fault(vm_ops))
+	if (!vma->vm_ops)
 		return;
 
 	/*
