@@ -277,6 +277,7 @@
   device_get_next_child_node
   device_initialize
   device_link_add
+  device_link_del
   device_link_remove
   device_match_fwnode
   device_match_of_node
@@ -1374,6 +1375,7 @@
   of_find_node_opts_by_path
   of_find_property
   of_genpd_add_provider_onecell
+  of_genpd_add_provider_simple
   of_get_child_by_name
   of_get_compatible_child
   of_get_display_timing
@@ -1538,6 +1540,7 @@
   platform_unregister_drivers
   pm_genpd_add_subdomain
   pm_genpd_init
+  pm_genpd_remove
   __pm_relax
   pm_runtime_allow
   __pm_runtime_disable
