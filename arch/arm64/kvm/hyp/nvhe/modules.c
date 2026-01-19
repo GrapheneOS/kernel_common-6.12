@@ -357,6 +357,7 @@ const struct pkvm_module_ops module_ops = {
 	.hyp_smp_processor_id = __hyp_smp_processor_id,
 	.device_register_reset = pkvm_device_register_reset,
 	.register_guest_trng_ops = __register_guest_trng_ops,
+	.request_hyp_alloc = kvm_iommu_request_hyp_alloc,
 };
 
 static void *pkvm_module_hyp_va(struct pkvm_el2_module *mod, void *kern_va)

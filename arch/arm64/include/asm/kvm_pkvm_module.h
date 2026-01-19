@@ -196,7 +196,7 @@ struct pkvm_module_trng_ops {
  * @hyp_free:			Free memory allocated  from hyp_alloc().
  * @iommu_donate_pages:		Allocate memory from IOMMU pool.
  * @iommu_reclaim_pages:	Reclaim memory from iommu_donate_pages()
- * @iommu_request:		Fill a request that is returned from the entry HVC (see hyp-main.c).
+ * @request_hyp_alloc:		Request an alloc request based on current IOMMU context
  * @iommu_init_device:		Initialize common IOMMU fields.
  * @udelay:			Delay in us.
  * @hyp_alloc_missing_donations:
@@ -312,7 +312,7 @@ struct pkvm_module_ops {
 	ANDROID_KABI_USE(2, int (*map_module_pages)(u64 pfn, void *va, u64 nr_pages,
 				    enum kvm_pgtable_prot prot, bool is_protected));
 	ANDROID_KABI_USE(3, int (*unmap_module_pages)(u64 pfn, void *va, u64 nr_pages));
-	ANDROID_KABI_RESERVE(4);
+	ANDROID_KABI_USE(4, int (*request_hyp_alloc)(void));
 	ANDROID_KABI_RESERVE(5);
 	ANDROID_KABI_RESERVE(6);
 	ANDROID_KABI_RESERVE(7);
