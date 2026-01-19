@@ -697,8 +697,10 @@ static int smmu_alloc_domain(struct kvm_hyp_iommu_domain *domain, int type)
 		return -EINVAL;
 
 	smmu_domain = hyp_alloc(sizeof(*smmu_domain));
-	if (!smmu_domain)
+	if (!smmu_domain) {
+		kvm_iommu_request_hyp_alloc();
 		return -ENOMEM;
+	}
 
 	INIT_LIST_HEAD(&smmu_domain->iommu_list);
 	hyp_rwlock_init(&smmu_domain->list_lock);
@@ -1296,6 +1298,7 @@ static int smmu_attach_dev(struct kvm_hyp_iommu *iommu, struct kvm_hyp_iommu_dom
 		}
 		iommu_node = hyp_alloc(sizeof(struct domain_iommu_node));
 		if (!iommu_node) {
+			kvm_iommu_request_hyp_alloc();
 			ret = -ENOMEM;
 			goto out_unlock;
 		}
