@@ -1428,6 +1428,7 @@
   klist_iter_exit
   klist_iter_init
   klist_next
+  klist_node_attached
   klist_remove
   __kmalloc_cache_node_noprof
   __kmalloc_cache_noprof
