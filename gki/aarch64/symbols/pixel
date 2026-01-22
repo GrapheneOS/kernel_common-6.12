@@ -1525,12 +1525,16 @@
   __kvmalloc_node_noprof
   kvm_iommu_alloc_domain
   kvm_iommu_attach_dev
+  kvm_iommu_attach_dev_nested
   kvm_iommu_detach_dev
+  kvm_iommu_detach_dev_nested
   kvm_iommu_free_domain
   kvm_iommu_init_hyp
+  kvm_iommu_iotlb_inv_nested_domain
   kvm_iommu_iova_to_phys
   kvm_iommu_map_pages
   kvm_iommu_map_sg
+  kvm_iommu_nested_cfg_sync
   kvm_iommu_register_driver
   kvm_iommu_share_hyp_sg
   kvm_iommu_unmap_pages
