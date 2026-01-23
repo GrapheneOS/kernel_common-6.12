@@ -75,6 +75,8 @@ static int zram_process_walker(pmd_t *pmd, unsigned long start,
 			continue;
 
 		entry = pte_to_swp_entry(pte);
+		if (unlikely(non_swap_entry(entry)))
+			continue;
 
 		/* prevent the swapoff race condition */
 		sis = get_swap_device(entry);
