@@ -197,6 +197,7 @@ filegroup(
         "gki/aarch64/symbols/kunit",
         "gki/aarch64/symbols/lenovo",
         "gki/aarch64/symbols/meizu",
+        "gki/aarch64/symbols/moto",
         "gki/aarch64/symbols/mtk",
         "gki/aarch64/symbols/mtktv",
         "gki/aarch64/symbols/oplus",
