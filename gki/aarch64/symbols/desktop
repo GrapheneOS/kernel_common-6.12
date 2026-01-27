@@ -580,6 +580,7 @@
   drm_bridge_hpd_notify
   drm_bridge_is_panel
   drm_bridge_remove
+  drm_color_ctm_s31_32_to_qm_n
   drm_compat_ioctl
   drm_connector_attach_encoder
   drm_connector_attach_max_bpc_property
