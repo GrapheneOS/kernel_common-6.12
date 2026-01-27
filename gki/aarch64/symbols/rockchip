@@ -2676,6 +2676,7 @@
   drm_property_replace_blob
   __drm_puts_seq_file
   drm_rect_calc_hscale
+  drm_rect_calc_vscale
   drm_self_refresh_helper_cleanup
   drm_self_refresh_helper_init
   drm_send_event_locked

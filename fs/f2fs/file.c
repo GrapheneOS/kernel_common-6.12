@@ -57,7 +57,7 @@ static void f2fs_zero_post_eof_page(struct inode *inode,
 		filemap_invalidate_unlock(inode->i_mapping);
 }
 
-vm_fault_t f2fs_filemap_fault(struct vm_fault *vmf)
+static vm_fault_t f2fs_filemap_fault(struct vm_fault *vmf)
 {
 	struct inode *inode = file_inode(vmf->vma->vm_file);
 	vm_flags_t flags = vmf->vma->vm_flags;

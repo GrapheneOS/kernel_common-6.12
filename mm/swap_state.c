@@ -330,6 +330,8 @@ void free_pages_and_swap_cache(struct encoded_page **pages, int nr)
 			     ENCODED_PAGE_BIT_NR_PAGES_NEXT))
 			refs[folios.nr] = encoded_nr_pages(pages[++i]);
 
+		trace_android_vh_free_pages_and_swap_cache(folio);
+
 		if (folio_batch_add(&folios, folio) == 0)
 			folios_put_refs(&folios, refs);
 	}

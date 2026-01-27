@@ -1476,7 +1476,6 @@ static int __allocate_data_block(struct dnode_of_data *dn, int seg_type)
 
 static void f2fs_map_lock(struct f2fs_sb_info *sbi, int flag)
 {
-	f2fs_down_read(&sbi->cp_enable_rwsem);
 	if (flag == F2FS_GET_BLOCK_PRE_AIO)
 		f2fs_down_read(&sbi->node_change);
 	else
@@ -1489,7 +1488,6 @@ static void f2fs_map_unlock(struct f2fs_sb_info *sbi, int flag)
 		f2fs_up_read(&sbi->node_change);
 	else
 		f2fs_unlock_op(sbi);
-	f2fs_up_read(&sbi->cp_enable_rwsem);
 }
 
 int f2fs_get_block_locked(struct dnode_of_data *dn, pgoff_t index)
@@ -2460,12 +2458,13 @@ static int f2fs_read_data_large_folio(struct inode *inode,
 	unsigned nrpages;
 	struct f2fs_folio_state *ffs;
 	int ret = 0;
+	bool folio_in_bio;
 
-	if (!IS_IMMUTABLE(inode))
+	if (!IS_IMMUTABLE(inode) || f2fs_compressed_file(inode)) {
+		if (folio)
+			folio_unlock(folio);
 		return -EOPNOTSUPP;
-
-	if (f2fs_compressed_file(inode))
-		return -EOPNOTSUPP;
+	}
 
 	map.m_seg_type = NO_CHECK_TYPE;
 
@@ -2475,12 +2474,13 @@ next_folio:
 	if (!folio)
 		goto out;
 
+	folio_in_bio = false;
 	index = folio->index;
 	offset = 0;
 	ffs = NULL;
 	nrpages = folio_nr_pages(folio);
 
-	for (; nrpages; nrpages--) {
+	for (; nrpages; nrpages--, max_nr_pages--, index++, offset++) {
 		sector_t block_nr;
 		/*
 		 * Map blocks using the previous result first.
@@ -2560,37 +2560,31 @@ submit_and_realloc:
 					offset << PAGE_SHIFT))
 			goto submit_and_realloc;
 
+		folio_in_bio = true;
 		inc_page_count(F2FS_I_SB(inode), F2FS_RD_DATA);
 		f2fs_update_iostat(F2FS_I_SB(inode), NULL, FS_DATA_READ_IO,
 				F2FS_BLKSIZE);
 		last_block_in_bio = block_nr;
-		index++;
-		offset++;
 	}
 	trace_f2fs_read_folio(folio, DATA);
+err_out:
+	if (!folio_in_bio) {
+		folio_end_read(folio, !ret);
+		if (ret)
+			return ret;
+	}
 	if (rac) {
 		folio = readahead_folio(rac);
 		goto next_folio;
 	}
-err_out:
-	/* Nothing was submitted. */
-	if (!bio) {
-		if (!ret)
-			folio_mark_uptodate(folio);
-		folio_unlock(folio);
-		return ret;
-	}
-
+out:
+	f2fs_submit_read_bio(F2FS_I_SB(inode), bio, DATA);
 	if (ret) {
-		f2fs_submit_read_bio(F2FS_I_SB(inode), bio, DATA);
-
 		/* Wait bios and clear uptodate. */
 		folio_lock(folio);
 		folio_clear_uptodate(folio);
 		folio_unlock(folio);
 	}
-out:
-	f2fs_submit_read_bio(F2FS_I_SB(inode), bio, DATA);
 	return ret;
 }
 

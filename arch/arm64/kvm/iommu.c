@@ -23,6 +23,7 @@
 	__res.a1;							\
 })
 
+#ifdef CONFIG_CMA
 static phys_addr_t __topup_virt_to_phys(void *virt)
 {
 	return __pa(virt);
@@ -81,6 +82,12 @@ static int __kvm_iommu_topup_memcache_from_cma(size_t size, gfp_t gfp, size_t *a
 
 	return 0;
 }
+#else
+static int __kvm_iommu_topup_memcache_from_cma(size_t size, gfp_t gfp, size_t *allocated)
+{
+	return -ENOMEM;
+}
+#endif /* CONFIG_CMA */
 
 static int kvm_iommu_topup_memcache(struct arm_smccc_res *res, gfp_t gfp)
 {
@@ -130,9 +137,11 @@ static int kvm_iommu_topup_memcache(struct arm_smccc_res *res, gfp_t gfp)
 struct kvm_iommu_driver *iommu_driver;
 extern struct kvm_iommu_ops *kvm_nvhe_sym(kvm_iommu_ops);
 
+#ifdef CONFIG_CMA
 static struct cma *kvm_iommu_cma;
 extern phys_addr_t kvm_nvhe_sym(cma_base);
 extern size_t kvm_nvhe_sym(cma_size);
+#endif /* CONFIG_CMA */
 
 int kvm_iommu_register_driver(struct kvm_iommu_driver *kern_ops)
 {
@@ -159,6 +168,7 @@ int kvm_iommu_init_hyp(struct kvm_iommu_ops *hyp_ops,
 }
 EXPORT_SYMBOL(kvm_iommu_init_hyp);
 
+#ifdef CONFIG_CMA
 static int __init pkvm_iommu_cma_setup(struct reserved_mem *rmem)
 {
 	int err;
@@ -200,6 +210,19 @@ bool kvm_iommu_cma_release(struct page *p)
 	return cma_release(kvm_iommu_cma, p, 1 << pmd_order);
 }
 EXPORT_SYMBOL(kvm_iommu_cma_release);
+#else
+struct page *kvm_iommu_cma_alloc(void)
+{
+	return NULL;
+}
+EXPORT_SYMBOL(kvm_iommu_cma_alloc);
+
+bool kvm_iommu_cma_release(struct page *p)
+{
+	return false;
+}
+EXPORT_SYMBOL(kvm_iommu_cma_release);
+#endif /* CONFIG_CMA */
 
 int kvm_iommu_init_driver(void)
 {
