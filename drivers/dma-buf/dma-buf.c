@@ -1190,6 +1190,12 @@ void dma_buf_unpin(struct dma_buf_attachment *attach)
 }
 EXPORT_SYMBOL_NS_GPL(dma_buf_unpin, DMA_BUF);
 
+void dma_buf_mangle_sg_table(struct sg_table *sg_table)
+{
+	mangle_sg_table(sg_table);
+}
+EXPORT_SYMBOL_NS_GPL(dma_buf_mangle_sg_table, DMA_BUF);
+
 /**
  * dma_buf_map_attachment - Returns the scatterlist table of the attachment;
  * mapped into _device_ address space. Is a wrapper for map_dma_buf() of the
