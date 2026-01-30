@@ -98,3 +98,7 @@ type 'struct pkvm_module_ops' changed
   member 'u64 __kabi_reserved4' was removed
   member 'union { int(* request_hyp_alloc)(); struct { u64 __kabi_reserved4; }; union { }; }' was added
 
+variable symbol changed from 'u64 vendor_data_pad[64]' to 'u64 vendor_data_pad[128]'
+  type changed from 'u64[64]' to 'u64[128]'
+    number of elements changed from 64 to 128
+
