@@ -187,6 +187,7 @@
   bus_get_dev_root
   bus_register
   bus_register_notifier
+  bus_rescan_devices
   bus_unregister
   bus_unregister_notifier
   caches_clean_inval_pou
@@ -2408,6 +2409,7 @@
   pin_user_pages_fast
   pipe_lock
   pipe_unlock
+  __pkvm_topup_hyp_alloc
   platform_bus_type
   platform_device_add
   platform_device_add_data
