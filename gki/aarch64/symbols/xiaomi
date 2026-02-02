@@ -579,3 +579,7 @@ inode_add_lru
 
 __traceiter_android_vh_fuse_request_fetch
 __tracepoint_android_vh_fuse_request_fetch
+
+# required by mi cma pool
+cma_mutex
+
