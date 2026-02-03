@@ -2,7 +2,7 @@
 
 set -e
 
-CLANG_VERSION="r510928"
+CLANG_VERSION="r547379"
 
 [[ "${ARCH}" =~ aarch64|x86_64 ]] || (echo "unknown or undefined ARCH" && exit 1)
 
