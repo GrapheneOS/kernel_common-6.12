@@ -19,12 +19,12 @@ function find_in_out(){
 	find out/bazel/output_user_root/*/execroot -type f -name $1
 }
 
-tools/bazel run --lto=full "$@" //common:kernel_${ARCH}_dist -- --dist_dir=common_dist
+tools/bazel run --lto=full "$@" //common:kernel_${ARCH}_dist -- --wipe_destdir --destdir=common_dist
 
 cp $(find_in_out "signing_key.pem") ${cert_pem}
 cp $(find_in_out "signing_key.x509") ${cert_x509}
 
-tools/bazel run --lto=full "$@" //common-modules/virtual-device:virtual_device_${ARCH}_dist -- --dist_dir=virt_dist
+tools/bazel run --lto=full "$@" //common-modules/virtual-device:virtual_device_${ARCH}_dist -- --wipe_destdir --destdir=virt_dist
 
 prebuilts/clang/host/linux-x86/clang-${CLANG_VERSION}/bin/clang common/scripts/sign-file.c -lssl -lcrypto -o ${sign_file}
 find virt_dist/ -type f -name "*.ko" \
