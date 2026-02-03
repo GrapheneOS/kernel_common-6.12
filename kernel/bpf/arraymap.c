@@ -8,6 +8,7 @@
 #include <linux/slab.h>
 #include <linux/mm.h>
 #include <linux/filter.h>
+#include <linux/page_size_compat_defs.h>
 #include <linux/perf_event.h>
 #include <uapi/linux/btf.h>
 #include <linux/rcupdate_trace.h>
@@ -120,8 +121,8 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 		 * ensure array->value is exactly page-aligned
 		 */
 		if (attr->map_flags & BPF_F_MMAPABLE) {
-			array_size = PAGE_ALIGN(array_size);
-			array_size += PAGE_ALIGN((u64) max_entries * elem_size);
+			array_size = __PAGE_ALIGN(sizeof(*array));
+			array_size += __PAGE_ALIGN((u64) max_entries * elem_size);
 		} else {
 			array_size += (u64) max_entries * elem_size;
 		}
@@ -135,7 +136,7 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 		data = bpf_map_area_mmapable_alloc(array_size, numa_node);
 		if (!data)
 			return ERR_PTR(-ENOMEM);
-		array = data + PAGE_ALIGN(sizeof(struct bpf_array))
+		array = data + __PAGE_ALIGN(sizeof(struct bpf_array))
 			- offsetof(struct bpf_array, value);
 	} else {
 		array = bpf_map_area_alloc(array_size, numa_node);
@@ -566,7 +567,7 @@ static int array_map_mmap(struct bpf_map *map, struct vm_area_struct *vma)
 		return -EINVAL;
 
 	if (vma->vm_pgoff * PAGE_SIZE + (vma->vm_end - vma->vm_start) >
-	    PAGE_ALIGN((u64)array->map.max_entries * array->elem_size))
+	    __PAGE_ALIGN((u64)array->map.max_entries * array->elem_size))
 		return -EINVAL;
 
 	return remap_vmalloc_range(vma, array_map_vmalloc_addr(array),
@@ -774,8 +775,8 @@ static u64 array_map_mem_usage(const struct bpf_map *map)
 		usage += entries * elem_size * num_possible_cpus();
 	} else {
 		if (map->map_flags & BPF_F_MMAPABLE) {
-			usage = PAGE_ALIGN(usage);
-			usage += PAGE_ALIGN(entries * elem_size);
+			usage = __PAGE_ALIGN(usage);
+			usage += __PAGE_ALIGN(entries * elem_size);
 		} else {
 			usage += entries * elem_size;
 		}
