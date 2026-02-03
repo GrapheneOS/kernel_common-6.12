@@ -121,7 +121,7 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 		 * ensure array->value is exactly page-aligned
 		 */
 		if (attr->map_flags & BPF_F_MMAPABLE) {
-			array_size = __PAGE_ALIGN(sizeof(*array));
+			array_size = PAGE_ALIGN(sizeof(*array));
 			array_size += __PAGE_ALIGN((u64) max_entries * elem_size);
 		} else {
 			array_size += (u64) max_entries * elem_size;
@@ -136,7 +136,7 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 		data = bpf_map_area_mmapable_alloc(array_size, numa_node);
 		if (!data)
 			return ERR_PTR(-ENOMEM);
-		array = data + __PAGE_ALIGN(sizeof(struct bpf_array))
+		array = data + PAGE_ALIGN(sizeof(struct bpf_array))
 			- offsetof(struct bpf_array, value);
 	} else {
 		array = bpf_map_area_alloc(array_size, numa_node);
@@ -775,7 +775,7 @@ static u64 array_map_mem_usage(const struct bpf_map *map)
 		usage += entries * elem_size * num_possible_cpus();
 	} else {
 		if (map->map_flags & BPF_F_MMAPABLE) {
-			usage = __PAGE_ALIGN(usage);
+			usage = PAGE_ALIGN(usage);
 			usage += __PAGE_ALIGN(entries * elem_size);
 		} else {
 			usage += entries * elem_size;
