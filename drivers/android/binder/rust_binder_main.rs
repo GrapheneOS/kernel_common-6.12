@@ -309,11 +309,13 @@ impl kernel::Module for BinderModule {
             }
 
             if binder_use_rust == 0 {
+                #[cfg(CONFIG_EVENT_TRACING)]
                 binder_remove_trace_events(_module.as_ptr());
                 return Ok(Self {});
             }
             if unload_binder() != 0 {
                 pr_err!("Failed to unload C Binder.");
+                #[cfg(CONFIG_EVENT_TRACING)]
                 binder_remove_trace_events(_module.as_ptr());
                 return Ok(Self {});
             }
