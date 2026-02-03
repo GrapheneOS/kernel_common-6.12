@@ -2340,7 +2340,6 @@
   rtnl_trylock
   rtnl_unlock
   runqueues
-  RUST_BINDER_LAYOUT
   sbitmap_weight
   sched_clock
   sched_energy_present
@@ -2843,8 +2842,6 @@
   __traceiter_android_vh_put_task
   __traceiter_android_vh_resume_end
   __traceiter_android_vh_rmqueue
-  __traceiter_android_vh_rust_binder_restore_priority
-  __traceiter_android_vh_rust_binder_set_priority
   __traceiter_android_vh_scheduler_tick
   __traceiter_android_vh_setscheduler_uclamp
   __traceiter_android_vh_show_smap
@@ -3000,8 +2997,6 @@
   __tracepoint_android_vh_put_task
   __tracepoint_android_vh_resume_end
   __tracepoint_android_vh_rmqueue
-  __tracepoint_android_vh_rust_binder_restore_priority
-  __tracepoint_android_vh_rust_binder_set_priority
   __tracepoint_android_vh_scheduler_tick
   __tracepoint_android_vh_setscheduler_uclamp
   __tracepoint_android_vh_show_smap
