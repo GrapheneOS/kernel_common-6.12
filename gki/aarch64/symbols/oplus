@@ -569,7 +569,6 @@
   try_to_del_timer_sync
   try_to_free_mem_cgroup_pages
   unlock_rename
-  unregister_memory_notifier
   unregister_tcf_proto_ops
   __udp4_lib_lookup
   __udp6_lib_lookup
@@ -628,10 +627,6 @@
   zstd_init_cctx
   zstd_init_dctx
   zstd_is_error
-  is_ashmem_file
-  ashmem_area_name
-  ashmem_area_size
-  ashmem_area_vmfile
   __traceiter_android_vh_lru_gen_add_folio_skip
   __traceiter_android_vh_lru_gen_del_folio_skip
   __traceiter_android_vh_evict_folios_bypass
