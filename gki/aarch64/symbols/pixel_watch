@@ -2,7 +2,6 @@
   activate_task
   add_cpu
   add_device_randomness
-  add_memory
   add_taint
   add_timer
   add_uevent_var
@@ -22,7 +21,6 @@
   __alloc_pages_noprof
   __alloc_skb
   alloc_skb_with_frags
-  alloc_swapdev_block
   alloc_workqueue
   alt_cb_patch_nops
   amba_bustype
@@ -1322,7 +1320,6 @@
   memdup_user
   memdup_user_nul
   memmove
-  memory_block_size_bytes
   memory_read_from_buffer
   memparse
   mempool_alloc_noprof
@@ -1786,7 +1783,6 @@
   register_inet6addr_notifier
   register_inetaddr_notifier
   register_kretprobe
-  register_memory_notifier
   register_module_notifier
   register_netdev
   register_netdevice
@@ -2057,7 +2053,6 @@
   sk_skb_reason_drop
   smp_call_function_single
   smp_call_function_single_async
-  snapshot_get_image_size
   snd_info_create_card_entry
   snd_info_create_module_entry
   snd_info_free_entry
@@ -2493,7 +2488,6 @@
   uart_remove_one_port
   uart_resume_port
   uart_suspend_port
-  uart_try_toggle_sysrq
   uart_unregister_driver
   uart_update_timeout
   uart_write_wakeup
