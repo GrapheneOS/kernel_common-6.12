@@ -1217,7 +1217,6 @@
   simple_strtoul
   stpcpy
   strcasecmp
-  system_entering_hibernation
   system_state
   trace_seq_printf
   trace_seq_putc
@@ -1238,7 +1237,6 @@
   memunmap
   of_n_addr_cells
   of_n_size_cells
-  set_online_page_callback
   vm_unmap_aliases
 
 # required by pcie-brcmstb.ko
@@ -1386,9 +1384,6 @@
   gpiochip_free_own_desc
 
 # TODO: external drivers
-
-# required by nexusmem.ko
-  restore_online_page_callback
 
 # required by nexus.ko
   recalc_sigpending
