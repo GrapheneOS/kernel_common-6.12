@@ -8,8 +8,8 @@ kernel_image_src=
 kernel_image_dst=
 if [[ "${ARCH}" == "arm64" ]]; then
         # https://github.com/GrapheneOS/device_generic_goldfish/blob/16-qpr2/board/kernel/arm64.mk
-        kernel_image_src="Image"
-        kernel_image_dst="kernel-${KERNEL_VERSION}"
+        kernel_image_src="Image.gz"
+        kernel_image_dst="kernel-${KERNEL_VERSION}-gz"
 elif [[ "${ARCH}" == "x86_64" ]]; then
 	# https://github.com/GrapheneOS/device_generic_goldfish/blob/16-qpr2/board/kernel/x86_64.mk
         kernel_image_src="bzImage"
