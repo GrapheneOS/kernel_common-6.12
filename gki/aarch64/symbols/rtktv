@@ -1,5 +1,4 @@
 [abi_symbol_list]
-  add_memory_subsection
   cpufreq_cooling_register
   cpufreq_cooling_unregister
   device_pm_wait_for_dev
@@ -25,7 +24,6 @@
   radix_tree_tag_clear
   radix_tree_tag_get
   radix_tree_tag_set
-  remove_memory_subsection
   send_sig_mceerr
   smpboot_unregister_percpu_thread
   __traceiter_android_vh_filemap_get_folio_gfp
