@@ -2,7 +2,6 @@
   access_process_vm
   activate_task
   add_cpu
-  add_memory_driver_managed
   addrconf_add_linklocal
   addrconf_prefix_rcv_add_addr
   add_taint
@@ -1106,7 +1105,6 @@
   generic_handle_irq_safe
   generic_hwtstamp_get_lower
   generic_hwtstamp_set_lower
-  generic_online_page
   generic_write_checks
   genlmsg_multicast_allns
   genlmsg_put
@@ -1675,8 +1673,6 @@
   memdup_user
   memmove
   memory_cgrp_subsys_on_dfl_key
-  memory_group_register_dynamic
-  memory_group_unregister
   memory_read_from_buffer
   memparse
   mempool_alloc_noprof
@@ -1695,7 +1691,6 @@
   memstart_addr
   memunmap
   metadata_dst_alloc
-  mhp_get_pluggable_range
   migrate_swap
   __migrate_task
   mipi_dsi_attach
@@ -2446,7 +2441,6 @@
   __reset_control_get
   reset_control_put
   reset_control_reset
-  restore_online_page_callback
   return_address
   rhashtable_destroy
   rhashtable_free_and_destroy
@@ -2611,7 +2605,6 @@
   set_disk_ro
   set_freezable
   set_normalized_timespec64
-  set_online_page_callback
   set_page_dirty
   set_page_dirty_lock
   __SetPageMovable
