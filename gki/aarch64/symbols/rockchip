@@ -2066,7 +2066,6 @@
   scsi_set_sense_field_pointer
   scsi_set_sense_information
   sdev_evt_send_simple
-  system_entering_hibernation
   trace_seq_printf
   trace_seq_putc
   transport_add_device
