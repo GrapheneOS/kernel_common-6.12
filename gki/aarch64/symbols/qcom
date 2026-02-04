@@ -4,7 +4,6 @@
   activate_task
   add_cpu
   add_device_randomness
-  add_memory
   addrconf_add_linklocal
   addrconf_prefix_rcv_add_addr
   add_taint
@@ -29,7 +28,6 @@
   __alloc_pages_noprof
   __alloc_skb
   alloc_skb_with_frags
-  alloc_swapdev_block
   alloc_workqueue
   alt_cb_patch_nops
   amba_bustype
@@ -1908,7 +1906,6 @@
   mem_dump_obj
   memdup_user
   memmove
-  memory_block_size_bytes
   memory_read_from_buffer
   memparse
   mempool_alloc_slab
@@ -2141,7 +2138,6 @@
   of_find_node_opts_by_path
   of_find_node_with_property
   of_find_property
-  offline_and_remove_memory
   of_fwnode_ops
   of_genpd_add_provider_onecell
   of_genpd_add_provider_simple
@@ -2668,7 +2664,6 @@
   register_inetaddr_notifier
   register_kprobe
   register_kretprobe
-  register_memory_notifier
   register_module_notifier
   register_netdev
   register_netdevice
@@ -2736,7 +2731,6 @@
   release_sock
   remap_pfn_range
   remove_cpu
-  remove_memory
   remove_proc_entry
   remove_resource
   remove_wait_queue
@@ -3055,7 +3049,6 @@
   smp_call_function
   smp_call_function_single
   smp_call_function_single_async
-  snapshot_get_image_size
   snd_ctl_remove
   snd_info_create_card_entry
   snd_info_create_module_entry
@@ -3329,10 +3322,6 @@
   timer_shutdown_sync
   timer_unstable_counter_workaround
   timespec64_to_jiffies
-  tipc_dump_done
-  tipc_dump_start
-  tipc_nl_sk_walk
-  tipc_sk_fill_sock_diag
   topology_clear_scale_freq_source
   topology_update_done
   topology_update_hw_pressure
