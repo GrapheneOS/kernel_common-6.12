@@ -335,7 +335,6 @@
   refcount_dec_and_mutex_lock
   refcount_warn_saturate
   __register_blkdev
-  register_memory_notifier
   register_netdev
   register_pm_notifier
   register_reboot_notifier
@@ -539,7 +538,6 @@
   try_to_free_mem_cgroup_pages
   unregister_blkdev
   unregister_chrdev_region
-  unregister_memory_notifier
   unregister_netdev
   unregister_pm_notifier
   unregister_reboot_notifier
