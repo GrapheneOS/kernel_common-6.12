@@ -110,7 +110,8 @@ static int virtio_transport_fill_skb(struct sk_buff *skb,
 
 	if (zcopy)
 		return __zerocopy_sg_from_iter(msg, NULL, skb,
-					       &msg->msg_iter, len);
+					       &msg->msg_iter,
+					       len);
 
 	virtio_vsock_skb_put(skb, len);
 	return skb_copy_datagram_from_iter_full(skb, 0, &msg->msg_iter, len);
