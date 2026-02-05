@@ -121,7 +121,7 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 		 * ensure array->value is exactly page-aligned
 		 */
 		if (attr->map_flags & BPF_F_MMAPABLE) {
-			array_size = PAGE_ALIGN(sizeof(*array));
+			array_size = PAGE_ALIGN(array_size);
 			array_size += __PAGE_ALIGN((u64) max_entries * elem_size);
 		} else {
 			array_size += (u64) max_entries * elem_size;
