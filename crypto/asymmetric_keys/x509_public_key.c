@@ -246,7 +246,11 @@ static void __exit x509_key_exit(void)
 	unregister_asymmetric_key_parser(&x509_key_parser);
 }
 
+#if IS_BUILTIN(CONFIG_X509_CERTIFICATE_PARSER)
+postcore_initcall(x509_key_init);
+#else
 module_init(x509_key_init);
+#endif
 module_exit(x509_key_exit);
 
 MODULE_DESCRIPTION("X.509 certificate parser");
