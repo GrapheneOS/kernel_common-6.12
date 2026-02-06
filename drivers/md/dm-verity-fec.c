@@ -188,11 +188,9 @@ error:
 	if (r < 0 && neras)
 		DMERR_LIMIT("%s: FEC %llu: failed to correct: %d",
 			    v->data_dev->name, (unsigned long long)rsb, r);
-	else if (r > 0) {
+	else if (r > 0)
 		DMWARN_LIMIT("%s: FEC %llu: corrected %d errors",
 			     v->data_dev->name, (unsigned long long)rsb, r);
-		atomic64_inc(verity_fec_corrected(v));
-	}
 
 	return r;
 }
@@ -467,6 +465,7 @@ int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
 	}
 
 	memcpy(dest, fio->output, 1 << v->data_dev_block_bits);
+	atomic64_inc(verity_fec_corrected(v));
 
 done:
 	fio->level--;
