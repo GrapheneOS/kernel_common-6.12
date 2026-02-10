@@ -89,3 +89,8 @@ type 'struct kvm_iommu_ops' changed
   member 'union { void(* iotlb_inv_nested_domain)(struct kvm_hyp_iommu_domain*, unsigned long, size_t, size_t, bool); struct { u64 __kabi_reserved4; }; union { }; }' was added
   member 'union { int(* nested_cfg_sync)(struct kvm_hyp_iommu*, void*, size_t); struct { u64 __kabi_reserved5; }; union { }; }' was added
 
+type 'struct io_ring_ctx' changed
+  member changed from 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; }' to 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; union { struct llist_head retry_llist; unsigned char __kabi_ignored8; }; }'
+    type changed from 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; }' to 'struct { struct llist_head work_llist; unsigned long check_cq; atomic_t cq_wait_nr; atomic_t cq_timeouts; struct wait_queue_head cq_wait; union { struct llist_head retry_llist; unsigned char __kabi_ignored8; }; }'
+      member 'union { struct llist_head retry_llist; unsigned char __kabi_ignored8; }' was added
+
