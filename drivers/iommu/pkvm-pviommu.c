@@ -209,7 +209,7 @@ static void pviommu_remove_dev_pasid(struct device *dev, ioasid_t pasid,
 	struct pviommu_master *master = dev_iommu_priv_get(dev);
 	struct iommu_fwspec *fwspec = dev_iommu_fwspec_get(dev);
 	struct pviommu *pv = master->iommu;
-	struct pviommu_domain *pv_domain = master->domain;
+	struct pviommu_domain *pv_domain = container_of(domain, struct pviommu_domain, domain);
 	struct arm_smccc_res res;
 	u32 sid;
 	int i;
