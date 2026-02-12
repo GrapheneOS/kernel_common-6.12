@@ -703,3 +703,7 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_rvh_gup_longterm_locked);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_resched_curr_lazy);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_restore_curr_resched);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_clear_curr_lazy);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_swapin_start);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_swapin_end);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_swap_writepage_start);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_swap_writepage_end);
