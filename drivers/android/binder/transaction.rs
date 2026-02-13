@@ -115,7 +115,7 @@ impl Transaction {
                     prio: from.task.normal_prio(),
                 }
             } else {
-                from.process.default_priority
+                to.default_priority
             };
 
         Ok(DTRWrap::arc_pin_init(pin_init!(Transaction {
@@ -510,8 +510,8 @@ impl DeliverToRead for Transaction {
             desired.sched_policy = prio::SCHED_NORMAL;
         }
 
-        if node_prio.prio < self.priority.prio
-            || (node_prio.prio == self.priority.prio && node_prio.sched_policy == prio::SCHED_FIFO)
+        if node_prio.prio < desired.prio
+            || (node_prio.prio == desired.prio && node_prio.sched_policy == prio::SCHED_FIFO)
         {
             // In case the minimum priority on the node is
             // higher (lower value), use that priority. If

@@ -664,8 +664,8 @@ DECLARE_HOOK(android_vh_thaw_killed_process,
 	TP_PROTO(bool *thaw),
 	TP_ARGS(thaw));
 DECLARE_HOOK(android_vh_folio_add_lru,
-        TP_PROTO(struct folio *folio),
-        TP_ARGS(folio));
+	TP_PROTO(struct folio *folio),
+	TP_ARGS(folio));
 DECLARE_HOOK(android_vh_folio_add_lru_folio_activate,
 	TP_PROTO(struct folio *folio, bool *bypass),
 	TP_ARGS(folio, bypass));
@@ -678,6 +678,9 @@ DECLARE_HOOK(android_vh_filemap_folio_mapped,
 DECLARE_HOOK(android_vh_folio_remove_rmap_ptes,
 	TP_PROTO(struct folio *folio),
 	TP_ARGS(folio));
+DECLARE_HOOK(android_vh_filemap_get_folio_end,
+	TP_PROTO(struct address_space *mapping, struct folio *folio),
+	TP_ARGS(mapping, folio));
 DECLARE_HOOK(android_vh_exit_oom_victim,
 	TP_PROTO(struct task_struct *task),
 	TP_ARGS(task));

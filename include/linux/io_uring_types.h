@@ -330,6 +330,7 @@ struct io_ring_ctx {
 		atomic_t		cq_wait_nr;
 		atomic_t		cq_timeouts;
 		struct wait_queue_head	cq_wait;
+		ANDROID_KABI_IGNORE(8, struct llist_head	retry_llist);
 	} ____cacheline_aligned_in_smp;
 
 	/* timeouts */

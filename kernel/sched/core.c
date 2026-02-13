@@ -7780,6 +7780,7 @@ pick_again:
 picked:
 	clear_tsk_need_resched(prev);
 	clear_preempt_need_resched();
+	trace_android_vh_clear_curr_lazy(prev);
 keep_resched:
 #ifdef CONFIG_SCHED_DEBUG
 	rq->last_seen_need_resched_ns = 0;

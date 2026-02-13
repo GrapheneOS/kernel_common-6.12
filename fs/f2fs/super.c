@@ -2285,6 +2285,7 @@ static int f2fs_disable_checkpoint(struct f2fs_sb_info *sbi)
 {
 	unsigned int s_flags = sbi->sb->s_flags;
 	struct cp_control cpc;
+	struct f2fs_lock_context lc;
 	unsigned int gc_mode = sbi->gc_mode;
 	int err = 0;
 	int ret;
@@ -2314,7 +2315,7 @@ static int f2fs_disable_checkpoint(struct f2fs_sb_info *sbi)
 			.no_bg_gc = true,
 			.nr_free_secs = 1 };
 
-		f2fs_down_write(&sbi->gc_lock);
+		f2fs_down_write_trace(&sbi->gc_lock, &gc_control.lc);
 		stat_inc_gc_call_count(sbi, FOREGROUND);
 		err = f2fs_gc(sbi, &gc_control);
 		if (err == -ENODATA) {
@@ -2338,7 +2339,7 @@ static int f2fs_disable_checkpoint(struct f2fs_sb_info *sbi)
 	}
 
 skip_gc:
-	f2fs_down_write(&sbi->gc_lock);
+	f2fs_down_write_trace(&sbi->gc_lock, &lc);
 	cpc.reason = CP_PAUSE;
 	set_sbi_flag(sbi, SBI_CP_DISABLED);
 	stat_inc_cp_call_count(sbi, TOTAL_CALL);
@@ -2351,7 +2352,7 @@ skip_gc:
 	spin_unlock(&sbi->stat_lock);
 
 out_unlock:
-	f2fs_up_write(&sbi->gc_lock);
+	f2fs_up_write_trace(&sbi->gc_lock, &lc);
 restore_flag:
 	sbi->gc_mode = gc_mode;
 	sbi->sb->s_flags = s_flags;	/* Restore SB_RDONLY status */
@@ -2364,6 +2365,7 @@ static int f2fs_enable_checkpoint(struct f2fs_sb_info *sbi)
 	unsigned int nr_pages = get_pages(sbi, F2FS_DIRTY_DATA) / 16;
 	long long start, writeback, end;
 	int ret;
+	struct f2fs_lock_context lc;
 
 	f2fs_info(sbi, "f2fs_enable_checkpoint() starts, meta: %lld, node: %lld, data: %lld",
 					get_pages(sbi, F2FS_DIRTY_META),
@@ -2390,12 +2392,12 @@ static int f2fs_enable_checkpoint(struct f2fs_sb_info *sbi)
 		f2fs_warn(sbi, "checkpoint=enable has some unwritten data: %lld",
 					get_pages(sbi, F2FS_DIRTY_DATA));
 
-	f2fs_down_write(&sbi->gc_lock);
+	f2fs_down_write_trace(&sbi->gc_lock, &lc);
 	f2fs_dirty_to_prefree(sbi);
 
 	clear_sbi_flag(sbi, SBI_CP_DISABLED);
 	set_sbi_flag(sbi, SBI_IS_DIRTY);
-	f2fs_up_write(&sbi->gc_lock);
+	f2fs_up_write_trace(&sbi->gc_lock, &lc);
 
 	ret = f2fs_sync_fs(sbi->sb, 1);
 	if (ret)
@@ -3051,6 +3053,7 @@ int f2fs_do_quota_sync(struct super_block *sb, int type)
 	 * that userspace sees the changes.
 	 */
 	for (cnt = 0; cnt < MAXQUOTAS; cnt++) {
+		struct f2fs_lock_context lc;
 
 		if (type != -1 && cnt != type)
 			continue;
@@ -3070,13 +3073,13 @@ int f2fs_do_quota_sync(struct super_block *sb, int type)
 		 *			      block_operation
 		 *			      f2fs_down_read(quota_sem)
 		 */
-		f2fs_lock_op(sbi);
+		f2fs_lock_op(sbi, &lc);
 		f2fs_down_read(&sbi->quota_sem);
 
 		ret = f2fs_quota_sync_file(sbi, cnt);
 
 		f2fs_up_read(&sbi->quota_sem);
-		f2fs_unlock_op(sbi);
+		f2fs_unlock_op(sbi, &lc);
 
 		if (!f2fs_sb_has_quota_ino(sbi))
 			inode_unlock(dqopt->files[cnt]);
@@ -4004,6 +4007,7 @@ static void init_sb_info(struct f2fs_sb_info *sbi)
 	sbi->max_fragment_hole = DEF_FRAGMENT_SIZE;
 	spin_lock_init(&sbi->gc_remaining_trials_lock);
 	atomic64_set(&sbi->current_atomic_write, 0);
+	sbi->max_lock_elapsed_time = MAX_LOCK_ELAPSED_TIME;
 
 	sbi->dir_level = DEF_DIR_LEVEL;
 	sbi->interval_time[CP_TIME] = DEF_CP_INTERVAL;
@@ -4596,13 +4600,13 @@ try_onemore:
 	sbi->sb = sb;
 
 	/* initialize locks within allocated memory */
-	init_f2fs_rwsem(&sbi->gc_lock);
+	init_f2fs_rwsem_trace(&sbi->gc_lock, sbi, LOCK_NAME_GC_LOCK);
 	mutex_init(&sbi->writepages);
-	init_f2fs_rwsem(&sbi->cp_global_sem);
-	init_f2fs_rwsem(&sbi->node_write);
-	init_f2fs_rwsem(&sbi->node_change);
+	init_f2fs_rwsem_trace(&sbi->cp_global_sem, sbi, LOCK_NAME_CP_GLOBAL);
+	init_f2fs_rwsem_trace(&sbi->node_write, sbi, LOCK_NAME_NODE_WRITE);
+	init_f2fs_rwsem_trace(&sbi->node_change, sbi, LOCK_NAME_NODE_CHANGE);
 	spin_lock_init(&sbi->stat_lock);
-	init_f2fs_rwsem(&sbi->cp_rwsem);
+	init_f2fs_rwsem_trace(&sbi->cp_rwsem, sbi, LOCK_NAME_CP_RWSEM);
 	init_f2fs_rwsem(&sbi->quota_sem);
 	init_waitqueue_head(&sbi->cp_wait);
 	spin_lock_init(&sbi->error_lock);

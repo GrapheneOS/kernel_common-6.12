@@ -3187,6 +3187,10 @@ static void binder_set_txn_from_error(struct binder_transaction *t, int id,
  * @data_size:	the user provided data size for the transaction
  * @error:	enum binder_driver_return_protocol returned to sender
  * @reply:	whether the transaction is a reply
+ *
+ * Note that t->buffer is not safe to access here, as it may have been
+ * released (or not yet allocated). Callers should guarantee all the
+ * transaction items used here are safe to access.
  */
 static void binder_netlink_report(struct binder_proc *proc,
 				  struct binder_transaction *t,
@@ -4009,6 +4013,14 @@ static void binder_transaction(struct binder_proc *proc,
 			goto err_dead_proc_or_thread;
 		}
 	} else {
+		/*
+		 * Make a transaction copy. It is not safe to access 't' after
+		 * binder_proc_transaction() reported a pending frozen. The
+		 * target could thaw and consume the transaction at any point.
+		 * Instead, use a safe 't_copy' for binder_netlink_report().
+		 */
+		struct binder_transaction t_copy = *t;
+
 		BUG_ON(target_node == NULL);
 		BUG_ON(t->buffer->async_transaction != 1);
 		return_error = binder_proc_transaction(t, target_proc, NULL);
@@ -4019,7 +4031,7 @@ static void binder_transaction(struct binder_proc *proc,
 		 */
 		if (return_error == BR_TRANSACTION_PENDING_FROZEN) {
 			tcomplete->type = BINDER_WORK_TRANSACTION_PENDING;
-			binder_netlink_report(proc, t, tr->data_size,
+			binder_netlink_report(proc, &t_copy, tr->data_size,
 					      return_error, reply);
 		}
 		binder_enqueue_thread_work(thread, tcomplete);
@@ -7457,6 +7469,7 @@ static int binder_loaded;
 
 static DEFINE_MUTEX(binder_use_rust_lock);
 
+#ifdef CONFIG_EVENT_TRACING
 // Declared in kernel/trace/trace.h, so can't be included from here.
 extern struct list_head ftrace_events;
 extern struct rw_semaphore trace_event_sem;
@@ -7486,6 +7499,9 @@ void binder_remove_trace_events(struct module *module)
 	mutex_unlock(&event_mutex);
 }
 EXPORT_SYMBOL_GPL(binder_remove_trace_events);
+#else
+static inline void binder_remove_trace_events(struct module *module) { }
+#endif
 
 /*
  * Called by Rust Binder to unload the C Binder driver.

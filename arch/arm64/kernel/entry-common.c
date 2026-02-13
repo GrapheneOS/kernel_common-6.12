@@ -30,6 +30,7 @@
 
 #include <trace/hooks/traps.h>
 #include <trace/hooks/gic.h>
+#include <trace/hooks/dtask.h>
 
 /*
  * Handle IRQ/context state management when entering from kernel mode.
@@ -132,11 +133,16 @@ static __always_inline void __exit_to_user_mode(void)
 
 static void do_notify_resume(struct pt_regs *regs, unsigned long thread_flags)
 {
+	int thread_lazy_resched_flag = 0;
+
+	trace_android_vh_restore_curr_resched(&thread_flags, &thread_lazy_resched_flag);
 	do {
 		local_irq_enable();
 
-		if (thread_flags & _TIF_NEED_RESCHED)
+		if (thread_flags & _TIF_NEED_RESCHED || thread_lazy_resched_flag) {
+			thread_lazy_resched_flag = 0;
 			schedule();
+		}
 
 		if (thread_flags & _TIF_UPROBE)
 			uprobe_notify_resume(regs);
@@ -158,17 +164,21 @@ static void do_notify_resume(struct pt_regs *regs, unsigned long thread_flags)
 
 		local_irq_disable();
 		thread_flags = read_thread_flags();
-	} while (thread_flags & _TIF_WORK_MASK);
+		trace_android_vh_restore_curr_resched(&thread_flags, &thread_lazy_resched_flag);
+	} while (thread_flags & _TIF_WORK_MASK || thread_lazy_resched_flag);
 }
 
 static __always_inline void exit_to_user_mode_prepare(struct pt_regs *regs)
 {
 	unsigned long flags;
 
+	int thread_lazy_resched_flag = 0;
+
 	local_irq_disable();
 
 	flags = read_thread_flags();
-	if (unlikely(flags & _TIF_WORK_MASK))
+	trace_android_vh_restore_curr_resched(&flags, &thread_lazy_resched_flag);
+	if (unlikely(flags & _TIF_WORK_MASK) || thread_lazy_resched_flag)
 		do_notify_resume(regs, flags);
 
 	local_daif_mask();
