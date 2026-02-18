@@ -18,3 +18,10 @@ __rust_helper void rust_helper_kunmap_local(const void *addr)
 {
 	kunmap_local(addr);
 }
+
+#ifndef NODE_NOT_IN_PAGE_FLAGS
+__rust_helper int rust_helper_page_to_nid(const struct page *page)
+{
+	return page_to_nid(page);
+}
+#endif

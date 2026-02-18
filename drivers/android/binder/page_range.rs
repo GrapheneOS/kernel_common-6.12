@@ -181,16 +181,6 @@ struct PageInfo {
 impl PageInfo {
     /// # Safety
     ///
-    /// The caller ensures that reading from `me.page` is ok.
-    unsafe fn has_page(me: *const PageInfo) -> bool {
-        // SAFETY: This pointer offset is in bounds.
-        let page = unsafe { &raw const (*me).page };
-
-        unsafe { (*page).is_some() }
-    }
-
-    /// # Safety
-    ///
     /// The caller ensures that writing to `me.page` is ok, and that the page is not currently set.
     unsafe fn set_page(me: *mut PageInfo, page: Page) {
         // SAFETY: This pointer offset is in bounds.
@@ -233,24 +223,24 @@ impl PageInfo {
     ///
     /// # Safety
     ///
-    /// The pointer must be valid, and it must be the right shrinker.
-    unsafe fn list_lru_add(me: *mut PageInfo, shrinker: &'static Shrinker) {
+    /// The pointer must be valid, and it must be the right shrinker and nid.
+    unsafe fn list_lru_add(me: *mut PageInfo, nid: i32, shrinker: &'static Shrinker) {
         // SAFETY: This pointer offset is in bounds.
         let lru_ptr = unsafe { &raw mut (*me).lru };
         // SAFETY: The lru pointer is valid, and we're not using it with any other lru list.
-        unsafe { bindings::list_lru_add_obj(shrinker.list_lru.get(), lru_ptr) };
+        unsafe { bindings::list_lru_add(shrinker.list_lru.get(), lru_ptr, nid, ptr::null_mut()) };
     }
 
     /// Remove this page from the lru list, if it is in the list.
     ///
     /// # Safety
     ///
-    /// The pointer must be valid, and it must be the right shrinker.
-    unsafe fn list_lru_del(me: *mut PageInfo, shrinker: &'static Shrinker) {
+    /// The pointer must be valid, and it must be the right shrinker and nid.
+    unsafe fn list_lru_del(me: *mut PageInfo, nid: i32, shrinker: &'static Shrinker) {
         // SAFETY: This pointer offset is in bounds.
         let lru_ptr = unsafe { &raw mut (*me).lru };
         // SAFETY: The lru pointer is valid, and we're not using it with any other lru list.
-        unsafe { bindings::list_lru_del_obj(shrinker.list_lru.get(), lru_ptr) };
+        unsafe { bindings::list_lru_del(shrinker.list_lru.get(), lru_ptr, nid, ptr::null_mut()) };
     }
 }
 
@@ -340,7 +330,7 @@ impl ShrinkablePageRange {
             let page_info = unsafe { inner.pages.add(i) };
 
             // SAFETY: The pointer is valid, and we hold the lock so reading from the page is okay.
-            if unsafe { PageInfo::has_page(page_info) } {
+            if let Some(page) = unsafe { PageInfo::get_page(page_info) } {
                 crate::trace::trace_alloc_lru_start(self.pid, i);
 
                 // Since we're going to use the page, we should remove it from the lru list so that
@@ -350,7 +340,7 @@ impl ShrinkablePageRange {
                 //
                 // The shrinker can't free the page between the check and this call to
                 // `list_lru_del` because we hold the lock.
-                unsafe { PageInfo::list_lru_del(page_info, self.shrinker) };
+                unsafe { PageInfo::list_lru_del(page_info, page.nid(), self.shrinker) };
 
                 crate::trace::trace_alloc_lru_end(self.pid, i);
             } else {
@@ -390,7 +380,7 @@ impl ShrinkablePageRange {
         let page_info = unsafe { inner.pages.add(i) };
 
         // SAFETY: The pointer is valid, and we hold the lock so reading from the page is okay.
-        if unsafe { PageInfo::has_page(page_info) } {
+        if let Some(page) = unsafe { PageInfo::get_page(page_info) } {
             // The page was already there, or someone else added the page while we didn't hold the
             // spinlock.
             //
@@ -398,7 +388,7 @@ impl ShrinkablePageRange {
             //
             // The shrinker can't free the page between the check and this call to
             // `list_lru_del` because we hold the lock.
-            unsafe { PageInfo::list_lru_del(page_info, self.shrinker) };
+            unsafe { PageInfo::list_lru_del(page_info, page.nid(), self.shrinker) };
             return Ok(());
         }
 
@@ -469,11 +459,11 @@ impl ShrinkablePageRange {
             let page_info = unsafe { inner.pages.add(i) };
 
             // SAFETY: Okay for reading since we have the lock.
-            if unsafe { PageInfo::has_page(page_info) } {
+            if let Some(page) = unsafe { PageInfo::get_page(page_info) } {
                 crate::trace::trace_free_lru_start(self.pid, i);
 
                 // SAFETY: The pointer is valid, and it's the right shrinker.
-                unsafe { PageInfo::list_lru_add(page_info, self.shrinker) };
+                unsafe { PageInfo::list_lru_add(page_info, page.nid(), self.shrinker) };
 
                 crate::trace::trace_free_lru_end(self.pid, i);
             }
@@ -625,9 +615,9 @@ impl PinnedDrop for ShrinkablePageRange {
             // SAFETY: Loop is in-bounds of the size.
             let p_ptr = unsafe { pages.add(i) };
             // SAFETY: No other readers, so we can read.
-            if unsafe { PageInfo::has_page(p_ptr) } {
+            if let Some(p) = unsafe { PageInfo::get_page(p_ptr) } {
                 // SAFETY: The pointer is valid and it's the right shrinker.
-                unsafe { PageInfo::list_lru_del(p_ptr, self.shrinker) };
+                unsafe { PageInfo::list_lru_del(p_ptr, p.nid(), self.shrinker) };
             }
         }
 
