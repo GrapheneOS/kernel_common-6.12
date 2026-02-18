@@ -71,8 +71,9 @@ static int dmabuf_content_create_wrap(struct wrap_content *content,
 
 	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
 				      content);
-	return anon_inode_getfd("[wrapfd]", &wrap_fops, ctx,
-				dmabuf_content->writable ? O_RDWR : O_RDONLY);
+	return anon_inode_create_getfd("[wrapfd]", &wrap_fops, ctx,
+				       dmabuf_content->writable ? O_RDWR : O_RDONLY,
+				       NULL);
 }
 
 static int dmabuf_content_load(struct wrap_content *content, struct file *file,
