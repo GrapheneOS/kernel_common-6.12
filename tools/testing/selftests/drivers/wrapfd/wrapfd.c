@@ -257,7 +257,8 @@ static void test_wrap_rdonly(struct __test_metadata *_metadata,
 
 	/* Try mapping as writable */
 	ASSERT_EQ(mmap(NULL, self->size, PROT_READ | PROT_WRITE,
-		       MAP_PRIVATE, wrapfd, 0), MAP_FAILED);
+		       MAP_SHARED, wrapfd, 0), MAP_FAILED);
+	ASSERT_EQ(errno, EACCES);
 
 	close(wrapfd);
 }
@@ -493,15 +494,15 @@ static void test_rewrap(struct __test_metadata *_metadata,
 		    state == WRAPFD_CONTENT_EMPTY);
 
 	/* Try mapping as writable */
-	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_PRIVATE,
+	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd3, 0);
-	ASSERT_TRUE(ptr == MAP_FAILED && errno == EINVAL);
+	ASSERT_TRUE(ptr == MAP_FAILED && errno == EACCES);
 
 	/* Check rewrapped content */
 	ASSERT_EQ(cmp_content(_metadata, self, wrapfd3), 0);
 
 	/* Try mapping the original empty wrap file */
-	ptr = mmap(NULL, self->size, PROT_READ, MAP_PRIVATE,
+	ptr = mmap(NULL, self->size, PROT_READ, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_TRUE(ptr == MAP_FAILED && errno == ENOENT);
 
@@ -531,7 +532,7 @@ static void test_empty(struct __test_metadata *_metadata,
 	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
 	/* Try emptying a mapped buffer */
-	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_PRIVATE,
+	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_NE(ptr, MAP_FAILED);
 	ASSERT_TRUE(wrapfd_empty(wrapfd) < 0 && errno == EINVAL);
@@ -543,7 +544,7 @@ static void test_empty(struct __test_metadata *_metadata,
 		    state == WRAPFD_CONTENT_EMPTY);
 
 	/* Try mapping the empty wrap file */
-	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_PRIVATE,
+	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_TRUE(ptr == MAP_FAILED && errno == ENOENT);
 
@@ -634,7 +635,7 @@ static void test_guests(struct __test_metadata *_metadata,
 	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
 	/* Try allowing guests for a mapped buffer */
-	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_PRIVATE,
+	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_NE(ptr, MAP_FAILED);
 	ASSERT_TRUE(wrapfd_allow_guests(wrapfd) < 0 && errno == EINVAL);
