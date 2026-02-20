@@ -23,6 +23,7 @@
 #include <linux/sched/stat.h>
 #include <linux/shrinker.h>
 #include <linux/psci.h>
+#include <linux/security.h>
 #include <trace/events/kvm.h>
 
 #define CREATE_TRACE_POINTS
@@ -2409,9 +2410,13 @@ static int __init init_subsystems(void)
 
 	kvm_register_perf_callbacks(NULL);
 
-	err = hyp_trace_init_tracefs();
-	if (err)
-		kvm_err("Failed to initialize Hyp tracing\n");
+	if (security_locked_down(LOCKDOWN_TRACEFS)) {
+		kvm_err("Hyp tracing disabled due to lockdown\n");
+	} else {
+		err = hyp_trace_init_tracefs();
+		if (err)
+			kvm_err("Failed to initialize Hyp tracing\n");
+	}
 out:
 	if (err)
 		hyp_cpu_pm_exit();
