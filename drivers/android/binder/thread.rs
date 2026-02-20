@@ -764,8 +764,8 @@ impl Thread {
     }
 
     pub(crate) fn restore_priority(&self, desired: &BinderPriority) {
-        self.do_set_priority(desired, false);
         crate::trace::vh_restore_priority(&self.task);
+        self.do_set_priority(desired, false);
     }
 
     fn translate_object(
