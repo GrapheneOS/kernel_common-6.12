@@ -82,7 +82,6 @@
 #include <trace/hooks/dmv_debug.h>
 #include <trace/hooks/vb2.h>
 #include <trace/hooks/rcu.h>
-#include <trace/hooks/dwc3.h>
 
 /*
  * Export tracepoints that act as a bare tracehook (ie: have no trace event
@@ -713,5 +712,3 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_swapin_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_swapin_end);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_swap_writepage_start);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_swap_writepage_end);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_dwc3_core_soft_reset);
-EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_dwc3_xhci_soft_reset);
