@@ -2630,6 +2630,22 @@ static struct reserve_mem_table *reserve_mem_find_by_name_nolock(const char *nam
 	return NULL;
 }
 
+const char *reserve_mem_find_name(phys_addr_t addr)
+{
+	struct reserve_mem_table *map;
+	int i;
+
+	for (i = 0; i < reserved_mem_count; i++) {
+		map = &reserved_mem_table[i];
+		if (!map->size)
+			continue;
+		if (map->start <= (unsigned long)addr &&
+		    (unsigned long)addr < map->start + map->size)
+			return map->name;
+	}
+	return NULL;
+}
+
 /**
  * reserve_mem_find_by_name - Find reserved memory region with a given name
  * @name: The name that is attached to a reserved memory region

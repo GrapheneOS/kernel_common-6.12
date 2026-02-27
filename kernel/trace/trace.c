@@ -6028,6 +6028,26 @@ static int cmp_mod_entry(const void *key, const void *pivot)
 		return addr - ent->mod_addr;
 }
 
+/* For KMI fixup, accessors to module_delta which is stored at data_delta. */
+static struct trace_module_delta *
+trace_array_get_module_delta(struct trace_array *tr)
+{
+	return (struct trace_module_delta *)READ_ONCE(tr->data_delta);
+}
+
+static void
+trace_array_set_module_delta(struct trace_array *tr, struct trace_module_delta *delta)
+{
+	WRITE_ONCE(tr->data_delta, *(long *)&delta);
+}
+
+static struct trace_scratch *trace_array_scratch(struct trace_array *tr, unsigned int *size)
+{
+	if (!tr->range_addr_start || !tr->range_addr_size)
+		return NULL;
+	return (struct trace_scratch *)ring_buffer_meta_scratch(tr->array_buffer.buffer, size);
+}
+
 /**
  * trace_adjust_address() - Adjust prev boot address to current address.
  * @tr: Persistent ring buffer's trace_array.
@@ -6045,11 +6065,11 @@ unsigned long trace_adjust_address(struct trace_array *tr, unsigned long addr)
 	if (!(tr->flags & TRACE_ARRAY_FL_LAST_BOOT))
 		return addr;
 
-	/* tr->module_delta must be protected by rcu. */
+	/* module_delta must be protected by rcu. */
 	guard(rcu)();
-	tscratch = tr->scratch;
+	tscratch = trace_array_scratch(tr, NULL);
 	/* if there is no tscrach, module_delta must be NULL. */
-	module_delta = READ_ONCE(tr->module_delta);
+	module_delta = trace_array_get_module_delta(tr);
 	if (!module_delta || !tscratch->nr_entries ||
 	    tscratch->entries[0].mod_addr > addr) {
 		raddr = addr + tr->text_delta;
@@ -6083,10 +6103,9 @@ static int save_mod(struct module *mod, void *data)
 	struct trace_mod_entry *entry;
 	unsigned int size;
 
-	tscratch = tr->scratch;
+	tscratch = trace_array_scratch(tr, &size);
 	if (!tscratch)
 		return -1;
-	size = tr->scratch_size;
 
 	if (struct_size(tscratch, entries, tscratch->nr_entries + 1) > size)
 		return -1;
@@ -6110,7 +6129,7 @@ static int save_mod(struct module *mod, void *data)
 static void update_last_data(struct trace_array *tr)
 {
 	struct trace_module_delta *module_delta;
-	struct trace_scratch *tscratch;
+	struct trace_scratch *tscratch = trace_array_scratch(tr, NULL);
 
 	if (!(tr->flags & TRACE_ARRAY_FL_BOOT))
 		return;
@@ -6122,9 +6141,7 @@ static void update_last_data(struct trace_array *tr)
 	tr->flags &= ~TRACE_ARRAY_FL_LAST_BOOT;
 
 	/* Reset the module list and reload them */
-	if (tr->scratch) {
-		struct trace_scratch *tscratch = tr->scratch;
-
+	if (tscratch) {
 		tscratch->clock_id = tr->clock_id;
 		memset(tscratch->entries, 0,
 		       flex_array_size(tscratch, entries, tscratch->nr_entries));
@@ -6145,12 +6162,11 @@ static void update_last_data(struct trace_array *tr)
 	/* Using current data now */
 	tr->text_delta = 0;
 
-	if (!tr->scratch)
+	if (!tscratch)
 		return;
 
-	tscratch = tr->scratch;
-	module_delta = READ_ONCE(tr->module_delta);
-	WRITE_ONCE(tr->module_delta, NULL);
+	module_delta = trace_array_get_module_delta(tr);
+	trace_array_set_module_delta(tr, NULL);
 	kfree_rcu(module_delta, rcu);
 
 	/* Set the persistent ring buffer meta data to this address */
@@ -6988,7 +7004,7 @@ tracing_total_entries_read(struct file *filp, char __user *ubuf,
 static void *l_next(struct seq_file *m, void *v, loff_t *pos)
 {
 	struct trace_array *tr = m->private;
-	struct trace_scratch *tscratch = tr->scratch;
+	struct trace_scratch *tscratch = trace_array_scratch(tr, NULL);
 	unsigned int index = *pos;
 
 	(*pos)++;
@@ -7023,7 +7039,7 @@ static void l_stop(struct seq_file *m, void *p)
 
 static void show_last_boot_header(struct seq_file *m, struct trace_array *tr)
 {
-	struct trace_scratch *tscratch = tr->scratch;
+	struct trace_scratch *tscratch = trace_array_scratch(tr, NULL);
 
 	/*
 	 * Do not leak KASLR address. This only shows the KASLR address of
@@ -7294,6 +7310,7 @@ static int tracing_clock_show(struct seq_file *m, void *v)
 
 int tracing_set_clock(struct trace_array *tr, const char *clockstr)
 {
+	struct trace_scratch *tscratch = trace_array_scratch(tr, NULL);
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(trace_clocks); i++) {
@@ -7321,11 +7338,8 @@ int tracing_set_clock(struct trace_array *tr, const char *clockstr)
 	tracing_reset_online_cpus(&tr->max_buffer);
 #endif
 
-	if (tr->scratch && !(tr->flags & TRACE_ARRAY_FL_LAST_BOOT)) {
-		struct trace_scratch *tscratch = tr->scratch;
-
+	if (tscratch && !(tr->flags & TRACE_ARRAY_FL_LAST_BOOT))
 		tscratch->clock_id = i;
-	}
 
 	mutex_unlock(&trace_types_lock);
 
@@ -9473,8 +9487,8 @@ static int make_mod_delta(struct module *mod, void *data)
 	struct trace_array *tr = data;
 	int i;
 
-	tscratch = tr->scratch;
-	module_delta = READ_ONCE(tr->module_delta);
+	tscratch = trace_array_scratch(tr, NULL);
+	module_delta = trace_array_get_module_delta(tr);
 	for (i = 0; i < tscratch->nr_entries; i++) {
 		entry = &tscratch->entries[i];
 		if (strcmp(mod->name, entry->mod_name))
@@ -9513,9 +9527,6 @@ static void setup_trace_scratch(struct trace_array *tr,
 	if (!tscratch)
 		return;
 
-	tr->scratch = tscratch;
-	tr->scratch_size = size;
-
 	if (tscratch->text_addr)
 		tr->text_delta = (unsigned long)_text - tscratch->text_addr;
 
@@ -9552,7 +9563,7 @@ static void setup_trace_scratch(struct trace_array *tr,
 		init_rcu_head(&module_delta->rcu);
 	} else
 		module_delta = NULL;
-	WRITE_ONCE(tr->module_delta, module_delta);
+	trace_array_set_module_delta(tr, module_delta);
 
 	/* Scan modules to make text delta for modules. */
 	module_for_each_mod(make_mod_delta, tr);
@@ -9656,11 +9667,15 @@ static int allocate_trace_buffers(struct trace_array *tr, int size)
 
 static void free_trace_buffers(struct trace_array *tr)
 {
+	struct trace_module_delta *module_delta;
+
 	if (!tr)
 		return;
 
+	module_delta = trace_array_get_module_delta(tr);
+
 	free_trace_buffer(&tr->array_buffer);
-	kfree(tr->module_delta);
+	kfree(module_delta);
 
 #ifdef CONFIG_TRACER_MAX_TRACE
 	free_trace_buffer(&tr->max_buffer);
@@ -9822,7 +9837,6 @@ trace_array_create_systems(const char *name, const char *systems,
 	free_cpumask_var(tr->pipe_cpumask);
 	free_cpumask_var(tr->tracing_cpumask);
 	kfree_const(tr->system_names);
-	kfree(tr->range_name);
 	kfree(tr->name);
 	kfree(tr);
 
@@ -9947,9 +9961,10 @@ static int __remove_instance(struct trace_array *tr)
 	free_trace_buffers(tr);
 	clear_tracing_err_log(tr);
 
-	if (tr->range_name) {
-		reserve_mem_release_by_name(tr->range_name);
-		kfree(tr->range_name);
+	if (tr->range_addr_start) {
+		const char *range_name = reserve_mem_find_name(tr->range_addr_start);
+
+		reserve_mem_release_by_name(range_name);
 	}
 	if (tr->flags & TRACE_ARRAY_FL_VMALLOC)
 		vfree((void *)tr->range_addr_start);
@@ -10938,10 +10953,8 @@ __init static void enable_instances(void)
 		if (backup)
 			tr->flags |= TRACE_ARRAY_FL_VMALLOC;
 
-		if (start || backup) {
+		if (start || backup)
 			tr->flags |= TRACE_ARRAY_FL_BOOT | TRACE_ARRAY_FL_LAST_BOOT;
-			tr->range_name = no_free_ptr(rname);
-		}
 
 		while ((tok = strsep(&curr_str, ","))) {
 			early_enable_events(tr, tok, true);
