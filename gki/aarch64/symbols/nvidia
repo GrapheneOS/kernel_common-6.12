@@ -606,6 +606,8 @@
   __devm_spi_alloc_controller
   devm_spi_mem_dirmap_create
   devm_spi_register_controller
+  devm_tegra_core_dev_init_opp_table
+  devm_tegra_memory_controller_get
   devm_thermal_of_cooling_device_register
   devm_thermal_of_zone_register
   devm_usb_get_phy
@@ -3264,6 +3266,30 @@
   tc_setup_offload_action
   tc_skb_ext_tc_disable
   tc_skb_ext_tc_enable
+  tegra_bpmp_free_mrq
+  tegra_bpmp_get
+  tegra_bpmp_mrq_is_supported
+  tegra_bpmp_mrq_return
+  tegra_bpmp_put
+  tegra_bpmp_request_mrq
+  tegra_bpmp_transfer
+  tegra_bpmp_transfer_atomic
+  tegra_fuse_readl
+  tegra_io_pad_power_disable
+  tegra_io_pad_power_enable
+  tegra_ivc_init
+  tegra_ivc_notified
+  tegra_ivc_read_advance
+  tegra_ivc_read_get_next_frame
+  tegra_ivc_reset
+  tegra_ivc_write_advance
+  tegra_ivc_write_get_next_frame
+  tegra_mc_get_carveout_info
+  tegra_mc_probe_device
+  tegra_powergate_power_off
+  tegra_powergate_sequence_power_up
+  tegra_sku_info
+  tegra_xusb_padctl_legacy_probe
   thermal_zone_device_enable
   thermal_zone_device_priv
   thermal_zone_device_register_with_trips
