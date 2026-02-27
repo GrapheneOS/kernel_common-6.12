@@ -105,6 +105,14 @@ DECLARE_HOOK(android_vh_cma_alloc_finish,
 DECLARE_HOOK(android_vh_cma_alloc_busy_info,
 	TP_PROTO(unsigned long *failed_pfn),
 	TP_ARGS(failed_pfn));
+DECLARE_HOOK(android_vh_cma_release_bypass,
+	TP_PROTO(struct cma *cma, const struct page *pages, unsigned long count,
+		bool *bypass),
+	TP_ARGS(cma, pages, count, bypass));
+DECLARE_HOOK(android_vh_cma_alloc_end,
+	TP_PROTO(struct cma *cma, unsigned long pfn, const struct page *pages,
+		unsigned long count, unsigned int align, int ret),
+	TP_ARGS(cma, pfn, pages, count, align, ret));
 
 struct compact_control;
 DECLARE_HOOK(android_vh_isolate_freepages,
@@ -529,6 +537,9 @@ DECLARE_HOOK(android_vh_calculate_totalreserve_pages,
 DECLARE_HOOK(android_vh_compact_finished,
 	TP_PROTO(bool *abort_compact),
 	TP_ARGS(abort_compact));
+DECLARE_HOOK(android_vh_compact_bypass,
+	TP_PROTO(struct compact_control *cc, bool *bypass),
+	TP_ARGS(cc, bypass));
 DECLARE_HOOK(android_vh_madvise_cold_or_pageout_abort,
 	TP_PROTO(struct vm_area_struct *vma, bool *abort_madvise),
 	TP_ARGS(vma, abort_madvise));
