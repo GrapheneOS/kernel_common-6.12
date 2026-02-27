@@ -7637,6 +7637,7 @@ needs_return:
 	return NULL;
 }
 #else /* SCHED_PROXY_EXEC */
+static inline struct task_struct *proxy_resched_idle(struct rq *rq) { return NULL; }
 static struct task_struct *
 find_proxy_task(struct rq *rq, struct task_struct *donor, struct rq_flags *rf)
 {
