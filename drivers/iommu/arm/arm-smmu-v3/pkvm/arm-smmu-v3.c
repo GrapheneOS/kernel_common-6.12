@@ -1057,6 +1057,7 @@ static int smmu_domain_config_s1(struct hyp_arm_smmu_v3_device *smmu,
 	__le64 *cd_entry;
 	struct io_pgtable_cfg *cfg;
 	struct hyp_arm_smmu_v3_domain *smmu_domain = domain->priv;
+	bool coherent = smmu->features & ARM_SMMU_FEAT_COHERENCY;
 
 	cfg = &smmu_domain->pgtable->cfg;
 	dst = smmu_get_ste_ptr(smmu, sid);
@@ -1091,8 +1092,11 @@ static int smmu_domain_config_s1(struct hyp_arm_smmu_v3_device *smmu,
 	cd_entry[2] = 0;
 	cd_entry[3] = cpu_to_le64(cfg->arm_lpae_s1_cfg.mair);
 
-	/* STE is live. */
-	if (pasid)
+	/*
+	 * Sync the CD if the STE was live or for non-coherent SMMUs,
+	 * as we rely on the Sync function to do the CMOs over it.
+	 */
+	if (pasid || !coherent)
 		smmu_sync_cd(smmu, cd_entry, sid, pasid);
 	val =  FIELD_PREP(CTXDESC_CD_0_TCR_T0SZ, cfg->arm_lpae_s1_cfg.tcr.tsz) |
 	       FIELD_PREP(CTXDESC_CD_0_TCR_TG0, cfg->arm_lpae_s1_cfg.tcr.tg) |
@@ -1106,8 +1110,8 @@ static int smmu_domain_config_s1(struct hyp_arm_smmu_v3_device *smmu,
 	       FIELD_PREP(CTXDESC_CD_0_ASID, domain->domain_id) |
 	       CTXDESC_CD_0_V;
 	WRITE_ONCE(cd_entry[0], cpu_to_le64(val));
-	/* STE is live. */
-	if (pasid)
+
+	if (pasid || !coherent)
 		smmu_sync_cd(smmu, cd_entry, sid, pasid);
 	return 0;
 }
