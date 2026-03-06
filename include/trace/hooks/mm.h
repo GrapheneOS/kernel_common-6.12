@@ -708,6 +708,10 @@ DECLARE_HOOK(android_vh_filemap_folio_mapped,
 DECLARE_HOOK(android_vh_folio_remove_rmap_ptes,
 	TP_PROTO(struct folio *folio),
 	TP_ARGS(folio));
+DECLARE_HOOK(android_vh_folio_expected_ref_count,
+	TP_PROTO(struct address_space *mapping, struct folio *folio,
+		int *expected_count),
+	TP_ARGS(mapping, folio, expected_count));
 DECLARE_HOOK(android_vh_filemap_get_folio_end,
 	TP_PROTO(struct address_space *mapping, struct folio *folio),
 	TP_ARGS(mapping, folio));
