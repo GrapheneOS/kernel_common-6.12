@@ -145,6 +145,7 @@
   __traceiter_android_vh_filemap_fault_post_folio_locked
   __traceiter_android_vh_filemap_read_end
   __traceiter_android_vh_filemap_update_page
+  __traceiter_android_vh_folio_expected_ref_count
   __traceiter_android_vh_force_page_cache_ra
   __traceiter_android_vh_free_task
   __traceiter_android_vh_fuse_request_end
@@ -284,6 +285,7 @@
   __tracepoint_android_vh_filemap_fault_post_folio_locked
   __tracepoint_android_vh_filemap_read_end
   __tracepoint_android_vh_filemap_update_page
+  __tracepoint_android_vh_folio_expected_ref_count
   __tracepoint_android_vh_force_page_cache_ra
   __tracepoint_android_vh_free_task
   __tracepoint_android_vh_fuse_request_end
