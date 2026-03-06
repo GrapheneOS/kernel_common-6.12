@@ -16,6 +16,7 @@
 #include <linux/fs.h>
 
 #include <linux/atomic.h>
+#include <linux/android_kabi.h>
 
 /*
  * The default fd array needs to be at least BITS_PER_LONG,
@@ -46,7 +47,7 @@ struct files_struct {
 	struct fdtable __rcu *fdt;
 	struct fdtable fdtab;
 
-	struct task_dma_buf_info *dmabuf_info;
+	ANDROID_KABI_IGNORE(1, struct task_dma_buf_info *dmabuf_info);
   /*
    * written part on a separate cache line in SMP
    */

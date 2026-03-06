@@ -1635,7 +1635,7 @@ struct task_struct {
 	 */
 	struct callback_head		l1d_flush_kill;
 #endif
-	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_USE(1, struct task_dma_buf_info *dmabuf_info);
 	ANDROID_KABI_RESERVE(2);
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
@@ -1657,8 +1657,6 @@ struct task_struct {
 #ifdef CONFIG_USER_EVENTS
 	struct user_event_mm		*user_event_mm;
 #endif
-
-	struct task_dma_buf_info *dmabuf_info;
 
 	/*
 	 * New fields for task_struct should be added above here, so that

@@ -537,16 +537,14 @@ struct dma_buf {
 	} *sysfs_entry;
 #endif
 
+	ANDROID_KABI_RESERVE(1);
+	ANDROID_KABI_RESERVE(2);
 	/**
 	 * @nr_task_refs:
 	 *
 	 * The number of tasks that reference this buffer. For calculating PSS.
 	 */
-	atomic64_t nr_task_refs;
-
-	ANDROID_KABI_RESERVE(1);
-	ANDROID_KABI_RESERVE(2);
-	ANDROID_BACKPORT_RESERVE(1);
+	ANDROID_BACKPORT_USE(1, atomic64_t nr_task_refs);
 };
 
 /**

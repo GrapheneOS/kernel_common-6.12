@@ -42,6 +42,8 @@
 #include <trace/hooks/dmabuf.h>
 #include <linux/android_kabi.h>
 
+ANDROID_KABI_DECLONLY(files_struct);
+
 DEFINE_STATIC_KEY_TRUE(dmabuf_accounting_key);
 
 static DEFINE_MUTEX(dmabuf_list_mutex);
