@@ -16,6 +16,10 @@
   kunit_cleanup
   kunit_deactivate_static_stub
   kunit_destroy_resource
+  kunit_device_register
+  kunit_device_register_with_driver
+  kunit_device_unregister
+  kunit_driver_create
   __kunit_do_failed_assertion
   kunit_fail_assert_format
   kunit_init_test

@@ -1024,6 +1024,11 @@ void folios_put_refs(struct folio_batch *folios, unsigned int *refs)
 		if (direct_free)
 			goto try_to_free;
 
+		trace_android_vh_folios_put_refs_direct_free_extent(folio, nr_refs,
+						&lruvec, flags, &direct_free);
+		if (direct_free)
+			goto try_to_free;
+
 		if (!folio_ref_sub_and_test(folio, nr_refs))
 			continue;
 

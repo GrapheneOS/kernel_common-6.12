@@ -187,6 +187,7 @@
   bus_get_dev_root
   bus_register
   bus_register_notifier
+  bus_rescan_devices
   bus_unregister
   bus_unregister_notifier
   caches_clean_inval_pou
@@ -2252,6 +2253,7 @@
   pci_bus_claim_resources
   pci_bus_size_bridges
   pci_bus_type
+  pci_clear_and_set_config_dword
   pci_clear_master
   pci_dev_get
   pci_device_group
@@ -2267,6 +2269,7 @@
   pcie_capability_read_word
   pci_enable_device
   pci_find_ext_capability
+  pci_find_vsec_capability
   pci_flags
   pci_free_irq_vectors
   pci_generic_config_read
@@ -2406,6 +2409,7 @@
   pin_user_pages_fast
   pipe_lock
   pipe_unlock
+  __pkvm_topup_hyp_alloc
   platform_bus_type
   platform_device_add
   platform_device_add_data
@@ -3061,6 +3065,8 @@
   snd_jack_set_key
   snd_pcm_format_width
   _snd_pcm_hw_params_any
+  snd_pcm_stream_lock
+  snd_pcm_stream_unlock
   snd_pcm_std_chmaps
   snd_soc_add_component_controls
   snd_soc_card_get_kcontrol
@@ -3263,6 +3269,7 @@
   sysfs_create_link
   sysfs_emit
   sysfs_emit_at
+  sysfs_file_change_owner
   __sysfs_match_string
   sysfs_notify
   sysfs_remove_bin_file

@@ -541,6 +541,9 @@ impl Thread {
     /// Attempts to fetch a work item from the thread-local queue. The behaviour if the queue is
     /// empty depends on `wait`: if it is true, the function waits for some work to be queued (or a
     /// signal); otherwise it returns indicating that none is available.
+    // #[export_name] is a temporary workaround so that ps output does not become unreadable from
+    // mangled symbol names.
+    #[export_name = "rust_binder_waitlcl"]
     fn get_work_local(self: &Arc<Self>, wait: bool) -> Result<Option<DLArc<dyn DeliverToRead>>> {
         {
             let mut inner = self.inner.lock();
@@ -579,6 +582,9 @@ impl Thread {
     ///
     /// This must only be called when the thread is not participating in a transaction chain. If it
     /// is, the local version (`get_work_local`) should be used instead.
+    // #[export_name] is a temporary workaround so that ps output does not become unreadable from
+    // mangled symbol names.
+    #[export_name = "rust_binder_wait"]
     fn get_work(self: &Arc<Self>, wait: bool) -> Result<Option<DLArc<dyn DeliverToRead>>> {
         // Try to get work from the thread's work queue, using only a local lock.
         {
@@ -764,8 +770,8 @@ impl Thread {
     }
 
     pub(crate) fn restore_priority(&self, desired: &BinderPriority) {
-        self.do_set_priority(desired, false);
         crate::trace::vh_restore_priority(&self.task);
+        self.do_set_priority(desired, false);
     }
 
     fn translate_object(
@@ -1137,10 +1143,8 @@ impl Thread {
 
         // Copy offsets if there are any.
         if offsets_size > 0 {
-            {
-                let mut reader = UserSlice::new(trd_data_ptr.offsets as _, offsets_size).reader();
-                alloc.copy_into(&mut reader, aligned_data_size, offsets_size)?;
-            }
+            let mut offsets_reader =
+                UserSlice::new(trd_data_ptr.offsets as _, offsets_size).reader();
 
             let offsets_start = aligned_data_size;
             let offsets_end = aligned_data_size + offsets_size;
@@ -1161,11 +1165,9 @@ impl Thread {
                 .step_by(size_of::<u64>())
                 .enumerate()
             {
-                let offset: usize = view
-                    .alloc
-                    .read::<u64>(index_offset)?
-                    .try_into()
-                    .map_err(|_| EINVAL)?;
+                let offset = offsets_reader.read::<u64>()?;
+                view.alloc.write(index_offset, &offset)?;
+                let offset: usize = offset.try_into().map_err(|_| EINVAL)?;
 
                 if offset < end_of_previous_object || !is_aligned(offset, size_of::<u32>()) {
                     pr_warn!("Got transaction with invalid offset.");

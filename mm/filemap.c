@@ -2835,6 +2835,8 @@ ssize_t filemap_read(struct kiocb *iocb, struct iov_iter *iter,
 				break;
 			}
 		}
+		trace_android_vh_filemap_read_end(inode, fbatch.folios,
+				folio_batch_count(&fbatch));
 put_folios:
 		for (i = 0; i < folio_batch_count(&fbatch); i++) {
 			struct folio *folio = fbatch.folios[i];
@@ -3591,6 +3593,8 @@ retry_find:
 		goto page_not_uptodate;
 	}
 
+	trace_android_vh_filemap_fault_post_folio_locked(inode, folio, index);
+
 	/*
 	 * We've made it this far and we had to drop our mmap_lock, now is the
 	 * time to return to the upper layer and have it re-find the vma and
@@ -3615,6 +3619,7 @@ retry_find:
 	}
 
 	vmf->page = folio_file_page(folio, index);
+	trace_android_vh_filemap_fault_folio_locked(inode, folio, index);
 	return ret | VM_FAULT_LOCKED;
 
 page_not_uptodate:

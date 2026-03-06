@@ -150,6 +150,7 @@
   clk_get_rate
   clk_hw_get_name
   clk_hw_get_parent
+  clk_hw_get_rate
   __clk_is_enabled
   clk_notifier_register
   clk_notifier_unregister
@@ -179,6 +180,7 @@
   completion_done
   component_add
   component_bind_all
+  component_compare_of
   component_del
   component_master_add_with_match
   component_master_del
@@ -376,6 +378,7 @@
   device_del
   device_destroy
   device_find_child
+  device_find_child_by_name
   device_for_each_child
   device_get_child_node_count
   device_get_dma_attr
@@ -2604,6 +2607,7 @@
   sysfs_notify
   sysfs_remove_file_from_group
   sysfs_remove_file_ns
+  sysfs_remove_files
   sysfs_remove_group
   sysfs_remove_groups
   sysfs_remove_link
@@ -2744,6 +2748,7 @@
   __traceiter_android_vh_binder_proc_transaction_finish
   __traceiter_android_vh_binder_restore_priority
   __traceiter_android_vh_binder_set_priority
+  __traceiter_android_vh_binder_wait_for_work
   __traceiter_android_vh_calculate_totalreserve_pages
   __traceiter_android_vh_check_new_page
   __traceiter_android_vh_chk_task
@@ -2752,6 +2757,8 @@
   __traceiter_android_vh_do_async_mmap_readahead
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_dup_task_struct
+  __traceiter_android_vh_dwc3_core_soft_reset
+  __traceiter_android_vh_dwc3_xhci_soft_reset
   __traceiter_android_vh_early_resume_begin
   __traceiter_android_vh_enable_thermal_genl_check
   __traceiter_android_vh_ep_create_wakeup_source
@@ -2892,6 +2899,7 @@
   __tracepoint_android_vh_binder_proc_transaction_finish
   __tracepoint_android_vh_binder_restore_priority
   __tracepoint_android_vh_binder_set_priority
+  __tracepoint_android_vh_binder_wait_for_work
   __tracepoint_android_vh_calculate_totalreserve_pages
   __tracepoint_android_vh_check_new_page
   __tracepoint_android_vh_chk_task
@@ -2900,6 +2908,8 @@
   __tracepoint_android_vh_do_async_mmap_readahead
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_dup_task_struct
+  __tracepoint_android_vh_dwc3_core_soft_reset
+  __tracepoint_android_vh_dwc3_xhci_soft_reset
   __tracepoint_android_vh_early_resume_begin
   __tracepoint_android_vh_enable_thermal_genl_check
   __tracepoint_android_vh_ep_create_wakeup_source
@@ -3298,6 +3308,7 @@
   xhci_sideband_remove_endpoint
   xhci_sideband_remove_interrupter
   xhci_sideband_unregister
+  xhci_stop_endpoint_sync
   xhci_suspend
   zlib_deflate
   zlib_deflateEnd

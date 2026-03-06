@@ -3961,6 +3961,17 @@ static void do_activate_blocked_waiter(struct rq *target_rq, struct task_struct 
 		}
 		proxy_set_task_cpu(p, target_cpu);
 		rq_lock_irqsave(target_rq, &rf);
+		/*
+		 * proxy_enqueue_on_owner() called block_task() which
+		 * increments nr_uninterruptible/nr_iowait, so we need
+		 * to reverse that when we activate the blocked waiter
+		 */
+		if (p->sched_contributes_to_load)
+			target_rq->nr_uninterruptible--;
+		if (p->in_iowait) {
+			delayacct_blkio_end(p);
+			atomic_dec(&task_rq(p)->nr_iowait);
+		}
 		update_rq_clock(target_rq);
 		activate_task(target_rq, p, en_flags);
 		resched_curr(target_rq);
@@ -4183,6 +4194,7 @@ static inline void activate_blocked_waiters(struct rq *target_rq,
 #endif /* CONFIG_SCHED_PROXY_EXEC */
 
 #ifdef CONFIG_SMP
+static inline struct task_struct *proxy_resched_idle(struct rq *rq);
 /*
  * Checks to see if task p has been proxy-migrated to another rq
  * and needs to be returned. If so, we deactivate the task here
@@ -4192,26 +4204,34 @@ static inline void activate_blocked_waiters(struct rq *target_rq,
  */
 static inline bool proxy_needs_return(struct rq *rq, struct task_struct *p)
 {
-	bool ret = false;
-
 	if (!sched_proxy_exec())
 		return false;
 
-	raw_spin_lock(&p->blocked_lock);
-	if (__get_task_blocked_on(p) && p->blocked_on_state == BO_WAKING) {
-		if (!task_current(rq, p) && (p->wake_cpu != cpu_of(rq))) {
-			if (task_current_donor(rq, p)) {
-				put_prev_task(rq, p);
-				rq_set_donor(rq, rq->idle);
-			}
-			deactivate_task(rq, p, DEQUEUE_NOCLOCK);
-			ret = true;
-		}
-		__set_blocked_on_runnable(p);
+	guard(raw_spinlock)(&p->blocked_lock);
+
+	/* If task isn't BO_WAKING, we don't need to do return migration */
+	if (p->blocked_on_state != BO_WAKING)
+		return false;
+
+	__set_blocked_on_runnable(p);
+
+	/* If already current, don't need to return migrate */
+	if (task_current(rq, p))
+		return false;
+
+	/* If wake_cpu is targeting this cpu, don't bother return migrating */
+	if (p->wake_cpu == cpu_of(rq)) {
 		resched_curr(rq);
+		return false;
 	}
-	raw_spin_unlock(&p->blocked_lock);
-	return ret;
+
+	/* If we're return migrating the rq->donor, switch it out for idle */
+	if (task_current_donor(rq, p))
+		proxy_resched_idle(rq);
+
+	/* (ab)Use DEQUEUE_SPECIAL to ensure task is always blocked here. */
+	block_task(rq, p, DEQUEUE_NOCLOCK | DEQUEUE_SPECIAL);
+	return true;
 }
 
 static inline void _trace_sched_pe_return_migration(struct task_struct *p)
@@ -7617,6 +7637,7 @@ needs_return:
 	return NULL;
 }
 #else /* SCHED_PROXY_EXEC */
+static inline struct task_struct *proxy_resched_idle(struct rq *rq) { return NULL; }
 static struct task_struct *
 find_proxy_task(struct rq *rq, struct task_struct *donor, struct rq_flags *rf)
 {
@@ -9466,10 +9487,12 @@ int sched_cpu_dying(unsigned int cpu)
 	sched_tick_stop(cpu);
 
 	rq_lock_irqsave(rq, &rf);
+	update_rq_clock(rq);
 	if (rq->nr_running != 1 || rq_has_pinned_tasks(rq)) {
 		WARN(true, "Dying CPU not properly vacated!");
 		dump_rq_tasks(rq, KERN_WARNING);
 	}
+	dl_server_stop(&rq->fair_server);
 	rq_unlock_irqrestore(rq, &rf);
 
 	trace_android_rvh_sched_cpu_dying(cpu);

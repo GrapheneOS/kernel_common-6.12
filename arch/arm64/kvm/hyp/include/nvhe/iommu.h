@@ -143,6 +143,8 @@ static inline void kvm_iommu_unlock(struct kvm_hyp_iommu *iommu)
 	hyp_spin_unlock(kvm_iommu_get_lock(iommu));
 }
 
+int kvm_iommu_request_hyp_alloc(void);
+
 extern struct hyp_mgt_allocator_ops kvm_iommu_allocator_ops;
 
 #endif /* __ARM64_KVM_NVHE_IOMMU_H__ */

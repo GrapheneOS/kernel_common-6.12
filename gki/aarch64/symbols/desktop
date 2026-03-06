@@ -1042,6 +1042,7 @@
   __init_waitqueue_head
   init_wait_var_entry
   input_alloc_absinfo
+  input_default_setkeycode
   input_event
   input_mt_destroy_slots
   input_mt_init_slots

@@ -12,6 +12,7 @@
 #include <kvm/iommu.h>
 #include <kvm/device.h>
 
+#include <nvhe/alloc.h>
 #include <nvhe/iommu.h>
 #include <nvhe/mem_protect.h>
 #include <nvhe/mm.h>
@@ -1148,4 +1149,28 @@ int kvm_iommu_iotlb_sync_map(pkvm_handle_t domain_id,
 	ret = kvm_iommu_ops->iotlb_sync_map(domain, iova, size);
 	domain_put(domain);
 	return ret;
+}
+
+int kvm_iommu_request_hyp_alloc(void)
+{
+	struct kvm_hyp_req *req;
+	struct pkvm_hyp_vcpu *hyp_vcpu = __get_vcpu();
+	size_t nr_pages = hyp_alloc_missing_donations();
+
+	if (!nr_pages)
+		return -ENOENT;
+
+	if (hyp_vcpu)
+		req = pkvm_hyp_req_reserve(hyp_vcpu, KVM_HYP_LAST_REQ);
+	else
+		req = this_cpu_ptr(&host_hyp_reqs);
+
+	if (!req || (req->type != KVM_HYP_LAST_REQ))
+		return -EBUSY;
+
+	req->type = KVM_HYP_REQ_TYPE_MEM;
+	req->mem.dest = REQ_MEM_DEST_HYP_ALLOC;
+	req->mem.nr_pages = nr_pages;
+	req->mem.sz_alloc = PAGE_SIZE;
+	return 0;
 }
