@@ -2432,7 +2432,7 @@ int __pkvm_host_donate_sglist_hyp(struct pkvm_sglist_page *sglist, size_t nr_pag
 		}
 
 		ret = ___host_check_page_state_range(phys, size, PKVM_PAGE_OWNED,
-						     HOST_CHECK_NULL_REFCNT);
+						     HOST_CHECK_NULL_REFCNT | HOST_CHECK_IS_MEMORY);
 		if (ret)
 			goto unlock;
 
