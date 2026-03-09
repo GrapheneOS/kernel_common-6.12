@@ -614,6 +614,10 @@ DECLARE_HOOK(android_vh_try_to_unmap_one,
 DECLARE_HOOK(android_vh_mem_cgroup_charge,
 	TP_PROTO(struct folio *folio, struct mem_cgroup **memcg),
 	TP_ARGS(folio, memcg));
+DECLARE_HOOK(android_vh_filemap_adjust_folio_flags,
+	TP_PROTO(struct address_space *mapping, struct folio *folio,
+		pgoff_t index),
+	TP_ARGS(mapping, folio, index));
 DECLARE_HOOK(android_vh_filemap_add_folio,
 	TP_PROTO(struct address_space *mapping, struct folio *folio,
 		pgoff_t index),
