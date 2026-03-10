@@ -81,7 +81,7 @@ fn shrinker_should_stop() -> bool {
 
 module! {
     type: AshmemModule,
-    name: "ashmem_rust",
+    name: "ashmem",
     author: "Alice Ryhl",
     description: "Anonymous Shared Memory Subsystem",
     license: "GPL",
