@@ -61,14 +61,14 @@ static inline int wrapfd_get_state(int wrapfd, unsigned int *state)
 	return ret;
 }
 
-static inline int wrapfd_get(int wrapfd)
+static inline int wrapfd_acquire_ownership(int wrapfd)
 {
-	return ioctl(wrapfd, WRAPFD_DEV_IOC_GET, NULL);
+	return ioctl(wrapfd, WRAPFD_DEV_IOC_ACQUIRE_OWNERSHIP, NULL);
 }
 
-static inline int wrapfd_put(int wrapfd)
+static inline int wrapfd_release_ownership(int wrapfd)
 {
-	return ioctl(wrapfd, WRAPFD_DEV_IOC_PUT, NULL);
+	return ioctl(wrapfd, WRAPFD_DEV_IOC_RELEASE_OWNERSHIP, NULL);
 }
 
 static inline int wrapfd_load(int wrapfd, int fd, unsigned long file_offs,
@@ -232,7 +232,7 @@ static void test_load(struct __test_metadata *_metadata,
 	/* Load the file content first */
 	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
 	ASSERT_TRUE(wrapfd >= 0);
-	ASSERT_EQ(wrapfd_get(wrapfd), 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
 	clear_content(_metadata, self, wrapfd);
 	ASSERT_NE(cmp_content(_metadata, self, wrapfd), 0);
@@ -240,7 +240,7 @@ static void test_load(struct __test_metadata *_metadata,
 	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
 	/* TODO: test more load offsets */
 
-	ASSERT_EQ(wrapfd_put(wrapfd), 0);
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
 	close(wrapfd);
 }
 
@@ -327,11 +327,11 @@ static void test_owner(struct __test_metadata *_metadata,
 	ptr = mmap(NULL, self->size, PROT_READ, MAP_SHARED | MAP_POPULATE,
 		   wrapfd, 0);
 	ASSERT_NE(ptr, MAP_FAILED);
-	ASSERT_TRUE(wrapfd_get(wrapfd) && errno == EINVAL);
+	ASSERT_TRUE(wrapfd_acquire_ownership(wrapfd) && errno == EINVAL);
 	ASSERT_EQ(munmap(ptr, self->size), 0);
 
 	/* Take ownership of an unmapped wrapfd */
-	ASSERT_EQ(wrapfd_get(wrapfd), 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
 	/* Map owned wrapfd */
 	ptr = mmap(NULL, self->size, PROT_READ, MAP_SHARED | MAP_POPULATE,
@@ -339,11 +339,11 @@ static void test_owner(struct __test_metadata *_metadata,
 	ASSERT_NE(ptr, MAP_FAILED);
 
 	/* Try releasing ownership while still mapped */
-	ASSERT_TRUE(wrapfd_put(wrapfd) && errno == EINVAL);
+	ASSERT_TRUE(wrapfd_release_ownership(wrapfd) && errno == EINVAL);
 	ASSERT_EQ(munmap(ptr, self->size), 0);
 
 	/* Release ownership of an unmapped wrapfd */
-	ASSERT_EQ(wrapfd_put(wrapfd), 0);
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
 	close(wrapfd);
 }
 
@@ -365,7 +365,7 @@ static void test_rewrap(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd2 < 0 && errno == EBUSY);
 
 	/* Take buffer ownership */
-	ASSERT_EQ(wrapfd_get(wrapfd), 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
 	/* Try rewrapping a mapped buffer */
 	ptr = mmap(NULL, self->size, PROT_READ, MAP_SHARED | MAP_POPULATE,
@@ -389,7 +389,7 @@ static void test_rewrap(struct __test_metadata *_metadata,
 	ASSERT_EQ(cmp_content(_metadata, self, wrapfd2), 0);
 
 	/* Take ownership of the rewrapped buffer */
-	ASSERT_EQ(wrapfd_get(wrapfd2), 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd2), 0);
 
 	/* Convert back to read-only */
 	wrapfd3 = wrapfd_rewrap(wrapfd2, PROT_READ);
@@ -413,8 +413,8 @@ static void test_rewrap(struct __test_metadata *_metadata,
 	ASSERT_TRUE(ptr == MAP_FAILED && errno == ENOENT);
 
 	/* Release ownership of the buffers */
-	ASSERT_EQ(wrapfd_put(wrapfd2), 0);
-	ASSERT_EQ(wrapfd_put(wrapfd), 0);
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd2), 0);
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
 
 	close(wrapfd3);
 	close(wrapfd2);
@@ -435,7 +435,7 @@ static void test_empty(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd_empty(wrapfd) < 0 && errno == EBUSY);
 
 	/* Take buffer ownership */
-	ASSERT_EQ(wrapfd_get(wrapfd), 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
 	/* Try emtying a mapped buffer */
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_PRIVATE,
@@ -455,7 +455,7 @@ static void test_empty(struct __test_metadata *_metadata,
 	ASSERT_TRUE(ptr == MAP_FAILED && errno == ENOENT);
 
 	/* Release buffer ownership */
-	ASSERT_EQ(wrapfd_put(wrapfd), 0);
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
 
 	close(wrapfd);
 }
@@ -473,7 +473,7 @@ static void test_guests(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd_allow_guests(wrapfd) < 0 && errno == EBUSY);
 
 	/* Take buffer ownership */
-	ASSERT_EQ(wrapfd_get(wrapfd), 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
 	/* Try allowing guests for a mapped buffer */
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_PRIVATE,
@@ -488,7 +488,7 @@ static void test_guests(struct __test_metadata *_metadata,
 	ASSERT_EQ(wrapfd_allow_guests(wrapfd), 0);
 
 	/* Release buffer ownership */
-	ASSERT_EQ(wrapfd_put(wrapfd), 0);
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
 
 	close(wrapfd);
 }

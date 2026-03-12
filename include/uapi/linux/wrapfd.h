@@ -48,8 +48,8 @@ struct wrapfd_rewrap {
 /* ioctl for wrapfd */
 #define WRAPFD_DEV_IOC_GET_STATE	_IOWR(WRAPFD_DEV_IOC, 1, \
 					      struct wrapfd_get_state)
-#define WRAPFD_DEV_IOC_GET	_IO(WRAPFD_DEV_IOC, 2)
-#define WRAPFD_DEV_IOC_PUT	_IO(WRAPFD_DEV_IOC, 3)
+#define WRAPFD_DEV_IOC_ACQUIRE_OWNERSHIP	_IO(WRAPFD_DEV_IOC, 2)
+#define WRAPFD_DEV_IOC_RELEASE_OWNERSHIP	_IO(WRAPFD_DEV_IOC, 3)
 #define WRAPFD_DEV_IOC_LOAD	_IOW(WRAPFD_DEV_IOC, 4, struct wrapfd_load)
 #define WRAPFD_DEV_IOC_REWRAP	_IOW(WRAPFD_DEV_IOC, 5, struct wrapfd_rewrap)
 #define WRAPFD_DEV_IOC_EMPTY	_IO(WRAPFD_DEV_IOC, 6)

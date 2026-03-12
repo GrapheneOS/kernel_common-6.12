@@ -584,7 +584,7 @@ static int get_wrap_state(struct wrap_ctx *ctx,
 	return 0;
 }
 
-static int wrap_file_get(struct wrap_ctx *ctx)
+static int wrap_file_acquire_ownership(struct wrap_ctx *ctx)
 {
 	int ret = 0;
 
@@ -615,7 +615,7 @@ unlock:
 	return ret;
 }
 
-static int wrap_file_put(struct wrap_ctx *ctx)
+static int wrap_file_release_ownership(struct wrap_ctx *ctx)
 {
 	int ret = 0;
 
@@ -850,11 +850,11 @@ static long wrap_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		ret = get_wrap_state(ctx,
 				     (struct wrapfd_get_state __user *)arg);
 		break;
-	case WRAPFD_DEV_IOC_GET:
-		ret = wrap_file_get(ctx);
+	case WRAPFD_DEV_IOC_ACQUIRE_OWNERSHIP:
+		ret = wrap_file_acquire_ownership(ctx);
 		break;
-	case WRAPFD_DEV_IOC_PUT:
-		ret = wrap_file_put(ctx);
+	case WRAPFD_DEV_IOC_RELEASE_OWNERSHIP:
+		ret = wrap_file_release_ownership(ctx);
 		break;
 	case WRAPFD_DEV_IOC_LOAD:
 		ret = wrap_file_load(ctx, (struct wrapfd_load __user *)arg);
@@ -913,8 +913,8 @@ bool is_wrapfd_vma(struct vm_area_struct *vma)
 	return (vma && (vma->vm_ops->open == wrap_vm_open));
 }
 
-int wrapfd_get(struct file *file, struct device *dev,
-	       union wrapfd_mappable *mappable)
+int wrapfd_get_mappable(struct file *file, struct device *dev,
+			union wrapfd_mappable *mappable)
 {
 	struct wrap_ctx *ctx;
 	int ret;
@@ -963,8 +963,8 @@ unlock:
 	return ret;
 }
 
-int wrapfd_put(struct file *file, struct device *dev,
-	       union wrapfd_mappable *mappable)
+int wrapfd_put_mappable(struct file *file, struct device *dev,
+			union wrapfd_mappable *mappable)
 {
 	struct wrap_ctx *ctx;
 	int ret;
