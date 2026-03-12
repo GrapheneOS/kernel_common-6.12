@@ -460,6 +460,71 @@ static void test_empty(struct __test_metadata *_metadata,
 	close(wrapfd);
 }
 
+static int is_close_on_exec(int fd) {
+	int flags;
+
+	flags = fcntl(fd, F_GETFD);
+	if (flags == -1)
+		return -1;
+
+	return (flags & FD_CLOEXEC) ? 1 : 0;
+}
+
+static int set_close_on_exec(int fd, bool set) {
+	int flags;
+
+	flags = fcntl(fd, F_GETFD);
+	if (flags == -1)
+		return -1;
+
+	if (set)
+		flags |= FD_CLOEXEC;
+	else
+		flags &= ~FD_CLOEXEC;
+
+	return fcntl(fd, F_SETFD, flags);
+}
+
+static void __test_close_on_exec(struct __test_metadata *_metadata,
+				 FIXTURE_DATA(wrapfd_tests) *self,
+				 int fd, int close_on_exec)
+{
+	int wrapfd, wrapfd2;
+
+	/* Wrap's attribute should match its content */
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
+	ASSERT_TRUE(wrapfd >= 0);
+	ASSERT_EQ(close_on_exec, is_close_on_exec(wrapfd));
+
+	/* Rewrapping should preserve the attribute */
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
+	wrapfd2 = wrapfd_rewrap(wrapfd, PROT_WRITE);
+	ASSERT_TRUE(wrapfd2 >= 0);
+	ASSERT_EQ(close_on_exec, is_close_on_exec(wrapfd2));
+
+	close(wrapfd2);
+	close(wrapfd);
+}
+
+static void test_close_on_exec(struct __test_metadata *_metadata,
+			       FIXTURE_DATA(wrapfd_tests) *self, int fd)
+{
+	int close_on_exec;
+
+	close_on_exec = is_close_on_exec(fd);
+	ASSERT_NE(close_on_exec, -1);
+
+	/* Test FD_CLOEXEC inheritance */
+	__test_close_on_exec(_metadata, self, fd, close_on_exec);
+
+	/* Test FD_CLOEXEC inheritance after toggling the attribute */
+	set_close_on_exec(fd, !close_on_exec);
+	__test_close_on_exec(_metadata, self, fd, !close_on_exec);
+
+	/* Reset attribute to the original value */
+	set_close_on_exec(fd, close_on_exec);
+}
+
 static void test_guests(struct __test_metadata *_metadata,
 			FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
@@ -538,6 +603,7 @@ static void run_tests(struct __test_metadata *_metadata,
 	test_owner(_metadata, self, fd);
 	test_rewrap(_metadata, self, fd);
 	test_empty(_metadata, self, fd);
+	test_close_on_exec(_metadata, self, fd);
 	test_guests(_metadata, self, fd);
 	test_ioctl(_metadata, self, fd);
 }
