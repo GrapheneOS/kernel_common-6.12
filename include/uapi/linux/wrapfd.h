@@ -21,7 +21,6 @@ struct wrapfd_wrap {
 #define WRAPFD_CONTENT_RDWR	2
 
 struct wrapfd_get_state {
-	__s64 fd;		/* [in] wrapfd to get info */
 	__u64 state;		/* [out] wrapfd content state */
 	__u64 reserved;
 };
@@ -42,10 +41,10 @@ struct wrapfd_rewrap {
 /* ioctls for /dev/wrapfd */
 #define WRAPFD_DEV_IOC 0xBC
 #define WRAPFD_DEV_IOC_WRAP	_IOW(WRAPFD_DEV_IOC, 0, struct wrapfd_wrap)
-#define WRAPFD_DEV_IOC_GET_STATE	_IOWR(WRAPFD_DEV_IOC, 1, \
-					      struct wrapfd_get_state)
 
 /* ioctl for wrapfd */
+#define WRAPFD_DEV_IOC_GET_STATE	_IOWR(WRAPFD_DEV_IOC, 1, \
+					      struct wrapfd_get_state)
 #define WRAPFD_DEV_IOC_GET	_IO(WRAPFD_DEV_IOC, 2)
 #define WRAPFD_DEV_IOC_PUT	_IO(WRAPFD_DEV_IOC, 3)
 #define WRAPFD_DEV_IOC_LOAD	_IOW(WRAPFD_DEV_IOC, 4, struct wrapfd_load)

@@ -49,14 +49,12 @@ static inline int wrapfd_wrap(int dev_fd, int fd, unsigned int prot)
 	return ioctl(dev_fd, WRAPFD_DEV_IOC_WRAP, &wrap);
 }
 
-static inline int wrapfd_get_state(int dev_fd, int fd, unsigned long *state)
+static inline int wrapfd_get_state(int wrapfd, unsigned long *state)
 {
-	struct wrapfd_get_state wrap_state = {
-		.fd = fd,
-	};
+	struct wrapfd_get_state wrap_state = { 0 };
 	int ret;
 
-	ret = ioctl(dev_fd, WRAPFD_DEV_IOC_GET_STATE, &wrap_state);
+	ret = ioctl(wrapfd, WRAPFD_DEV_IOC_GET_STATE, &wrap_state);
 	if (!ret && state)
 		*state = wrap_state.state;
 
@@ -214,15 +212,15 @@ static void test_wrap(struct __test_metadata *_metadata,
 	int wrapfd;
 
 	/* Get state of a non-wrapped fd */
-	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, fd, NULL) &&
-		    errno == EINVAL);
-	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, self->dev_fd, NULL) &&
-		    errno == EINVAL);
+	ASSERT_TRUE(wrapfd_get_state(fd, NULL) &&
+		    errno == ENOTTY);
+	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, NULL) &&
+		    errno == ENOTTY);
 
 	/* Wrap and get state of a wrapped fd */
 	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ);
 	ASSERT_TRUE(wrapfd >= 0);
-	ASSERT_EQ(wrapfd_get_state(self->dev_fd, wrapfd, NULL), 0);
+	ASSERT_EQ(wrapfd_get_state(wrapfd, NULL), 0);
 	close(wrapfd);
 }
 
@@ -359,7 +357,7 @@ static void test_rewrap(struct __test_metadata *_metadata,
 	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ);
 	ASSERT_TRUE(wrapfd >= 0);
 
-	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, wrapfd, &state) == 0 &&
+	ASSERT_TRUE(wrapfd_get_state(wrapfd, &state) == 0 &&
 		    state == WRAPFD_CONTENT_RDONLY);
 
 	/* Try rewrapping unowned buffer */
@@ -382,9 +380,9 @@ static void test_rewrap(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd2 >= 0);
 
 	/* Check the states of the new and original buffers */
-	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, wrapfd2, &state) == 0 &&
+	ASSERT_TRUE(wrapfd_get_state(wrapfd2, &state) == 0 &&
 		    state == WRAPFD_CONTENT_RDWR);
-	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, wrapfd, &state) == 0 &&
+	ASSERT_TRUE(wrapfd_get_state(wrapfd, &state) == 0 &&
 		    state == WRAPFD_CONTENT_EMPTY);
 
 	/* Check rewrapped content */
@@ -396,9 +394,9 @@ static void test_rewrap(struct __test_metadata *_metadata,
 	/* Convert back to read-only */
 	wrapfd3 = wrapfd_rewrap(wrapfd2, PROT_READ);
 	ASSERT_TRUE(wrapfd3 >= 0);
-	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, wrapfd3, &state) == 0 &&
+	ASSERT_TRUE(wrapfd_get_state(wrapfd3, &state) == 0 &&
 		    state == WRAPFD_CONTENT_RDONLY);
-	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, wrapfd2, &state) == 0 &&
+	ASSERT_TRUE(wrapfd_get_state(wrapfd2, &state) == 0 &&
 		    state == WRAPFD_CONTENT_EMPTY);
 
 	/* Try mapping as writable */
@@ -448,7 +446,7 @@ static void test_empty(struct __test_metadata *_metadata,
 
 	/* Empty the buffer */
 	ASSERT_EQ(wrapfd_empty(wrapfd), 0);
-	ASSERT_TRUE(wrapfd_get_state(self->dev_fd, wrapfd, &state) == 0 &&
+	ASSERT_TRUE(wrapfd_get_state(wrapfd, &state) == 0 &&
 		    state == WRAPFD_CONTENT_EMPTY);
 
 	/* Try mapping the empty wrap file */

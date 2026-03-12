@@ -550,6 +550,40 @@ static int wrap_release(struct inode *ignored, struct file *file)
 	return 0;
 }
 
+static int get_wrap_state(struct wrap_ctx *ctx,
+			  struct wrapfd_get_state __user *user_wrapfd_get_state)
+{
+	struct wrapfd_get_state wrapfd_get_state;
+
+	if (copy_from_user(&wrapfd_get_state, user_wrapfd_get_state,
+			   sizeof(wrapfd_get_state)))
+		return -EFAULT;
+
+	if (wrapfd_get_state.reserved)
+		return -EINVAL;
+
+	spin_lock(&ctx->lock);
+	/*
+	 * If mappings are blocked the content is being rewrapped or emptied.
+	 * Treat this as if the wrap is already empty.
+	 */
+	if (ctx->content && can_map(ctx)) {
+		if (ctx->content->ops->is_writable(ctx->content))
+			wrapfd_get_state.state = WRAPFD_CONTENT_RDWR;
+		else
+			wrapfd_get_state.state = WRAPFD_CONTENT_RDONLY;
+	} else {
+		wrapfd_get_state.state = WRAPFD_CONTENT_EMPTY;
+	}
+	spin_unlock(&ctx->lock);
+
+	if (copy_to_user(user_wrapfd_get_state, &wrapfd_get_state,
+			 sizeof(wrapfd_get_state)))
+		return -EFAULT;
+
+	return 0;
+}
+
 static int wrap_file_get(struct wrap_ctx *ctx)
 {
 	int ret = 0;
@@ -803,7 +837,7 @@ static int wrap_file_ioctl(struct wrap_ctx *ctx,
 	if (ctx->content->ops->ioctl)
 		return ctx->content->ops->ioctl(ctx->content, cmd, arg);
 
-	return -ENOTTY;
+	return -ENOIOCTLCMD;
 }
 
 static long wrap_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -812,6 +846,10 @@ static long wrap_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	long ret;
 
 	switch (cmd) {
+	case WRAPFD_DEV_IOC_GET_STATE:
+		ret = get_wrap_state(ctx,
+				     (struct wrapfd_get_state __user *)arg);
+		break;
 	case WRAPFD_DEV_IOC_GET:
 		ret = wrap_file_get(ctx);
 		break;
@@ -1016,47 +1054,6 @@ static int wrap_file(struct wrap_ctx *ctx,
 	return wrapfd;
 }
 
-static int get_wrap_state(struct wrapfd_get_state __user *user_wrapfd_get_state)
-{
-	struct wrapfd_get_state wrapfd_get_state;
-	struct wrap_ctx *ctx;
-	struct file *file;
-
-	if (copy_from_user(&wrapfd_get_state, user_wrapfd_get_state,
-			   sizeof(wrapfd_get_state)))
-		return -EFAULT;
-
-	if (wrapfd_get_state.reserved)
-		return -EINVAL;
-
-	file = fget(wrapfd_get_state.fd);
-	if (!file)
-		return -EBADF;
-
-	if (file->f_op != &wrap_fops) {
-		fput(file);
-		return -EINVAL;
-	}
-
-	ctx = file->private_data;
-	if (ctx->content) {
-		if (ctx->content->ops->is_writable(ctx->content))
-			wrapfd_get_state.state = WRAPFD_CONTENT_RDWR;
-		else
-			wrapfd_get_state.state = WRAPFD_CONTENT_RDONLY;
-	} else {
-		wrapfd_get_state.state = WRAPFD_CONTENT_EMPTY;
-	}
-
-	fput(file);
-
-	if (copy_to_user(user_wrapfd_get_state, &wrapfd_get_state,
-			 sizeof(wrapfd_get_state)))
-		return -EFAULT;
-
-	return 0;
-}
-
 static long wrapfd_dev_ioctl(struct file *file, unsigned int cmd,
 			     unsigned long arg)
 {
@@ -1076,11 +1073,8 @@ static long wrapfd_dev_ioctl(struct file *file, unsigned int cmd,
 			kfree(ctx);
 
 		break;
-	case WRAPFD_DEV_IOC_GET_STATE:
-		ret = get_wrap_state((struct wrapfd_get_state __user *)arg);
-		break;
 	default:
-		return -ENOTTY;
+		return -ENOIOCTLCMD;
 	}
 
 	return ret;
