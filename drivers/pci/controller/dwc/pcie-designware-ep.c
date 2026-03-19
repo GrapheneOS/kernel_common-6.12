@@ -526,8 +526,7 @@ int dw_pcie_ep_raise_msi_irq(struct dw_pcie_ep *ep, u8 func_no,
 	u32 msg_addr_lower, msg_addr_upper, reg;
 	struct dw_pcie_ep_func *ep_func;
 	struct pci_epc *epc = ep->epc;
-	size_t map_size = sizeof(u32);
-	size_t offset;
+	unsigned int aligned_offset;
 	u16 msg_ctrl, msg_data;
 	bool has_upper;
 	u64 msg_addr;
@@ -555,13 +554,14 @@ int dw_pcie_ep_raise_msi_irq(struct dw_pcie_ep *ep, u8 func_no,
 	}
 	msg_addr = ((u64)msg_addr_upper) << 32 | msg_addr_lower;
 
-	msg_addr = dw_pcie_ep_align_addr(epc, msg_addr, &map_size, &offset);
+	aligned_offset = msg_addr & (epc->mem->window.page_size - 1);
+	msg_addr = ALIGN_DOWN(msg_addr, epc->mem->window.page_size);
 	ret = dw_pcie_ep_map_addr(epc, func_no, 0, ep->msi_mem_phys, msg_addr,
-				  map_size);
+				  epc->mem->window.page_size);
 	if (ret)
 		return ret;
 
-	writel(msg_data | (interrupt_num - 1), ep->msi_mem + offset);
+	writel(msg_data | (interrupt_num - 1), ep->msi_mem + aligned_offset);
 
 	dw_pcie_ep_unmap_addr(epc, func_no, 0, ep->msi_mem_phys);
 
@@ -612,9 +612,8 @@ int dw_pcie_ep_raise_msix_irq(struct dw_pcie_ep *ep, u8 func_no,
 	struct pci_epf_msix_tbl *msix_tbl;
 	struct dw_pcie_ep_func *ep_func;
 	struct pci_epc *epc = ep->epc;
-	size_t map_size = sizeof(u32);
-	size_t offset;
 	u32 reg, msg_data, vec_ctrl;
+	unsigned int aligned_offset;
 	u32 tbl_offset;
 	u64 msg_addr;
 	int ret;
@@ -639,13 +638,14 @@ int dw_pcie_ep_raise_msix_irq(struct dw_pcie_ep *ep, u8 func_no,
 		return -EPERM;
 	}
 
-	msg_addr = dw_pcie_ep_align_addr(epc, msg_addr, &map_size, &offset);
+	aligned_offset = msg_addr & (epc->mem->window.page_size - 1);
+	msg_addr = ALIGN_DOWN(msg_addr, epc->mem->window.page_size);
 	ret = dw_pcie_ep_map_addr(epc, func_no, 0, ep->msi_mem_phys, msg_addr,
-				  map_size);
+				  epc->mem->window.page_size);
 	if (ret)
 		return ret;
 
-	writel(msg_data, ep->msi_mem + offset);
+	writel(msg_data, ep->msi_mem + aligned_offset);
 
 	dw_pcie_ep_unmap_addr(epc, func_no, 0, ep->msi_mem_phys);
 
