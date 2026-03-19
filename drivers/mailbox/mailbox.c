@@ -6,7 +6,6 @@
  * Author: Jassi Brar <jassisinghbrar@gmail.com>
  */
 
-#include <linux/cleanup.h>
 #include <linux/delay.h>
 #include <linux/device.h>
 #include <linux/err.h>
@@ -371,9 +370,13 @@ static int __mbox_bind_client(struct mbox_chan *chan, struct mbox_client *cl)
  */
 int mbox_bind_client(struct mbox_chan *chan, struct mbox_client *cl)
 {
-	guard(mutex)(&con_mutex);
+	int ret;
 
-	return __mbox_bind_client(chan, cl);
+	mutex_lock(&con_mutex);
+	ret = __mbox_bind_client(chan, cl);
+	mutex_unlock(&con_mutex);
+
+	return ret;
 }
 EXPORT_SYMBOL_GPL(mbox_bind_client);
 
@@ -414,25 +417,28 @@ struct mbox_chan *mbox_request_channel(struct mbox_client *cl, int index)
 		return ERR_PTR(ret);
 	}
 
-	scoped_guard(mutex, &con_mutex) {
-		chan = ERR_PTR(-EPROBE_DEFER);
-		list_for_each_entry(mbox, &mbox_cons, node)
-			if (mbox->dev->of_node == spec.np) {
-				chan = mbox->of_xlate(mbox, &spec);
-				if (!IS_ERR(chan))
-					break;
-			}
+	mutex_lock(&con_mutex);
 
-		of_node_put(spec.np);
+	chan = ERR_PTR(-EPROBE_DEFER);
+	list_for_each_entry(mbox, &mbox_cons, node)
+		if (mbox->dev->of_node == spec.np) {
+			chan = mbox->of_xlate(mbox, &spec);
+			if (!IS_ERR(chan))
+				break;
+		}
 
-		if (IS_ERR(chan))
-			return chan;
+	of_node_put(spec.np);
 
-		ret = __mbox_bind_client(chan, cl);
-		if (ret)
-			chan = ERR_PTR(ret);
+	if (IS_ERR(chan)) {
+		mutex_unlock(&con_mutex);
+		return chan;
 	}
 
+	ret = __mbox_bind_client(chan, cl);
+	if (ret)
+		chan = ERR_PTR(ret);
+
+	mutex_unlock(&con_mutex);
 	return chan;
 }
 EXPORT_SYMBOL_GPL(mbox_request_channel);
@@ -543,8 +549,9 @@ int mbox_controller_register(struct mbox_controller *mbox)
 	if (!mbox->of_xlate)
 		mbox->of_xlate = of_mbox_index_xlate;
 
-	scoped_guard(mutex, &con_mutex)
-		list_add_tail(&mbox->node, &mbox_cons);
+	mutex_lock(&con_mutex);
+	list_add_tail(&mbox->node, &mbox_cons);
+	mutex_unlock(&con_mutex);
 
 	return 0;
 }
@@ -561,15 +568,17 @@ void mbox_controller_unregister(struct mbox_controller *mbox)
 	if (!mbox)
 		return;
 
-	scoped_guard(mutex, &con_mutex) {
-		list_del(&mbox->node);
+	mutex_lock(&con_mutex);
 
-		for (i = 0; i < mbox->num_chans; i++)
-			mbox_free_channel(&mbox->chans[i]);
+	list_del(&mbox->node);
 
-		if (mbox->txdone_poll)
-			hrtimer_cancel(&mbox->poll_hrt);
-	}
+	for (i = 0; i < mbox->num_chans; i++)
+		mbox_free_channel(&mbox->chans[i]);
+
+	if (mbox->txdone_poll)
+		hrtimer_cancel(&mbox->poll_hrt);
+
+	mutex_unlock(&con_mutex);
 }
 EXPORT_SYMBOL_GPL(mbox_controller_unregister);
 
