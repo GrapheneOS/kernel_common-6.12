@@ -210,6 +210,7 @@ static void test_wrap(struct __test_metadata *_metadata,
 		      FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
 	int wrapfd;
+	struct stat sb;
 
 	/* Get state of a non-wrapped fd */
 	ASSERT_TRUE(wrapfd_get_state(fd, NULL) &&
@@ -221,6 +222,11 @@ static void test_wrap(struct __test_metadata *_metadata,
 	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ);
 	ASSERT_TRUE(wrapfd >= 0);
 	ASSERT_EQ(wrapfd_get_state(wrapfd, NULL), 0);
+
+	/* Ensure that the size of the wrapfd matches the size of the underlying buffer. */
+	ASSERT_EQ(fstat(wrapfd, &sb), 0);
+	ASSERT_EQ(sb.st_size, self->size);
+
 	close(wrapfd);
 }
 

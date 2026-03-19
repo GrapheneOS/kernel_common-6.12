@@ -69,12 +69,32 @@ static int dmabuf_content_create_wrap(struct wrap_content *content,
 				      struct wrap_ctx *ctx)
 {
 	struct wrap_content_dmabuf *dmabuf_content;
+	struct file *file;
+	int fd;
 
 	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
 				      content);
-	return anon_inode_create_getfd("[wrapfd]", &wrap_fops, ctx,
-				       dmabuf_content->writable ? O_RDWR : O_RDONLY,
-				       NULL);
+
+	fd = get_unused_fd_flags(0);
+	if (fd < 0)
+		return fd;
+
+	file = anon_inode_create_getfile("[wrapfd]", &wrap_fops, ctx,
+					 dmabuf_content->writable ? O_RDWR : O_RDONLY, NULL);
+	if (IS_ERR(file)) {
+		put_unused_fd(fd);
+		return PTR_ERR(file);
+	}
+
+	/*
+	 * Anonymous inodes are created with size == 0. To ensure that calls
+	 * like fstat() work as expected, copy the size from the buffer we are
+	 * wrapping.
+	 */
+	i_size_write(file_inode(file), dmabuf_content->dmabuf->size);
+	fd_install(fd, file);
+
+	return fd;
 }
 
 static int dmabuf_content_load(struct wrap_content *content, struct file *file,
