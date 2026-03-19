@@ -643,6 +643,7 @@
   __traceiter_android_vh_filemap_fault_pre_folio_locked
   __traceiter_android_vh_filemap_folio_mapped
   __traceiter_android_vh_folio_remove_rmap_ptes
+  __traceiter_android_vh_skip_cma
   __tracepoint_android_vh_lru_gen_add_folio_skip
   __tracepoint_android_vh_lru_gen_del_folio_skip
   __tracepoint_android_vh_evict_folios_bypass
@@ -659,4 +660,5 @@
   __tracepoint_android_vh_resched_curr_lazy
   __tracepoint_android_vh_restore_curr_resched
   __tracepoint_android_vh_clear_curr_lazy
+  __tracepoint_android_vh_skip_cma
   isolate_folio
