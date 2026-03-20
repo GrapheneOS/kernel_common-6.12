@@ -15,6 +15,7 @@ struct block_device;
 struct gendisk;
 struct path;
 struct readahead_control;
+struct request;
 struct request_queue;
 struct vfsmount;
 typedef __u32 __bitwise blk_opf_t;
@@ -25,6 +26,9 @@ DECLARE_HOOK(android_vh_bd_link_disk_holder,
 DECLARE_HOOK(android_vh_do_new_mount_fc,
 	TP_PROTO(struct path *mountpoint, struct vfsmount *mnt),
 	TP_ARGS(mountpoint, mnt));
+DECLARE_RESTRICTED_HOOK(android_rvh_blk_mq_has_request,
+	TP_PROTO(struct blk_mq_hw_ctx *hctx, struct request *rq, bool *ret),
+	TP_ARGS(hctx, rq, ret), 1);
 DECLARE_HOOK(android_vh_blk_mq_delay_run_hw_queue,
 	TP_PROTO(int cpu, struct blk_mq_hw_ctx *hctx, unsigned long delay, bool *skip),
 	TP_ARGS(cpu, hctx, delay, skip));
