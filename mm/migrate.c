@@ -612,6 +612,7 @@ int folio_migrate_mapping(struct address_space *mapping,
 {
 	int expected_count = folio_expected_ref_count(folio) + extra_count + 1;
 
+	trace_android_vh_folio_expected_ref_count(mapping, folio, &expected_count);
 	if (folio_ref_count(folio) != expected_count)
 		return -EAGAIN;
 
@@ -629,6 +630,7 @@ int migrate_huge_page_move_mapping(struct address_space *mapping,
 	XA_STATE(xas, &mapping->i_pages, folio_index(src));
 	int rc, expected_count = folio_expected_ref_count(src) + 1;
 
+	trace_android_vh_folio_expected_ref_count(mapping, src, &expected_count);
 	if (folio_ref_count(src) != expected_count)
 		return -EAGAIN;
 
@@ -762,6 +764,7 @@ static int __migrate_folio(struct address_space *mapping, struct folio *dst,
 {
 	int rc, expected_count = folio_expected_ref_count(src) + 1;
 
+	trace_android_vh_folio_expected_ref_count(mapping, src, &expected_count);
 	/* Check whether src does not have extra refs before we do more work */
 	if (folio_ref_count(src) != expected_count)
 		return -EAGAIN;
@@ -849,6 +852,7 @@ static int __buffer_migrate_folio(struct address_space *mapping,
 
 	/* Check whether page does not have extra refs before we do more work */
 	expected_count = folio_expected_ref_count(src) + 1;
+	trace_android_vh_folio_expected_ref_count(mapping, src, &expected_count);
 	if (folio_ref_count(src) != expected_count)
 		return -EAGAIN;
 

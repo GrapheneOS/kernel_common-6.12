@@ -166,6 +166,9 @@ DECLARE_HOOK(android_vh_mm_customize_reclaim_idx,
 DECLARE_HOOK(android_vh_may_unmap_folio,
 	TP_PROTO(enum lru_list lru, struct scan_control *sc, struct folio *folio, bool *bypass),
 	TP_ARGS(lru, sc, folio, bypass));
+DECLARE_HOOK(android_vh_skip_cma,
+	TP_PROTO(struct scan_control *sc, bool *bypass),
+	TP_ARGS(sc, bypass));
 
 #endif /* _TRACE_HOOK_VMSCAN_H */
 /* This part must be outside protection */

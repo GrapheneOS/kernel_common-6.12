@@ -1735,6 +1735,12 @@ static __always_inline void update_lru_sizes(struct lruvec *lruvec,
  */
 static bool skip_cma(struct folio *folio, struct scan_control *sc)
 {
+	bool bypass = false;
+
+	trace_android_vh_skip_cma(sc, &bypass);
+	if (bypass)
+		return false;
+
 	return !current_is_kswapd() &&
 			gfp_migratetype(sc->gfp_mask) != MIGRATE_MOVABLE &&
 			get_pageblock_migratetype(&folio->page) == MIGRATE_CMA;

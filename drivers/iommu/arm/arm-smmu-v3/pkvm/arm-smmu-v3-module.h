@@ -26,7 +26,6 @@ extern const struct pkvm_module_ops		*mod_ops;
 #define kvm_iommu_reclaim_pages(x, y)		CALL_FROM_OPS(iommu_reclaim_pages, x, y)
 #define hyp_virt_to_phys(x)			CALL_FROM_OPS(hyp_pa, x)
 #define hyp_phys_to_virt(x)			CALL_FROM_OPS(hyp_va, x)
-#define memcpy(x, y, z)				CALL_FROM_OPS(memcpy, x, y, z)
 #define kvm_iommu_init_device(x)		CALL_FROM_OPS(iommu_init_device, x)
 #define pkvm_udelay(x)				CALL_FROM_OPS(udelay, x)
 #define kvm_flush_dcache_to_poc(x, y)		CALL_FROM_OPS(flush_dcache_to_poc, x, y)

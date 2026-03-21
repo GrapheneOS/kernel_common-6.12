@@ -363,6 +363,9 @@ DECLARE_HOOK(android_vh_mm_free_page,
 DECLARE_HOOK(android_vh_page_cache_ra_unbounded,
 	TP_PROTO(struct address_space *mapping, struct folio *folio, u64 *data),
 	TP_ARGS(mapping, folio, data));
+DECLARE_HOOK(android_vh_ra_alloc_retry,
+	TP_PROTO(unsigned int *order, bool *retry),
+	TP_ARGS(order, retry));
 DECLARE_HOOK(android_vh_force_page_cache_ra,
 	TP_PROTO(struct address_space *mapping, u64 *data),
 	TP_ARGS(mapping, data));
@@ -708,6 +711,10 @@ DECLARE_HOOK(android_vh_filemap_folio_mapped,
 DECLARE_HOOK(android_vh_folio_remove_rmap_ptes,
 	TP_PROTO(struct folio *folio),
 	TP_ARGS(folio));
+DECLARE_HOOK(android_vh_folio_expected_ref_count,
+	TP_PROTO(struct address_space *mapping, struct folio *folio,
+		int *expected_count),
+	TP_ARGS(mapping, folio, expected_count));
 DECLARE_HOOK(android_vh_filemap_get_folio_end,
 	TP_PROTO(struct address_space *mapping, struct folio *folio),
 	TP_ARGS(mapping, folio));
@@ -759,6 +766,15 @@ DECLARE_HOOK(android_vh_swap_writepage_end,
 	TP_PROTO(struct page *page, struct writeback_control *wbc,
 		unsigned long swap_writepage_start),
 	TP_ARGS(page, wbc, swap_writepage_start));
+DECLARE_HOOK(android_vh_task_mem,
+	TP_PROTO(struct seq_file *m, struct mm_struct *mm),
+	TP_ARGS(m, mm));
+DECLARE_HOOK(android_vh_mm_free,
+	TP_PROTO(struct mm_struct *mm),
+	TP_ARGS(mm));
+DECLARE_HOOK(android_vh_mm_init,
+	TP_PROTO(struct mm_struct *mm),
+	TP_ARGS(mm));
 #endif /* _TRACE_HOOK_MM_H */
 
 /* This part must be outside protection */

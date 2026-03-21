@@ -50,6 +50,11 @@ struct dm_verity_fec {
 	struct kmem_cache *cache;	/* cache for buffers */
 };
 
+struct dm_verity_fec_ex {
+	struct dm_verity_fec base;
+	atomic64_t corrected; /* corrected errors */
+};
+
 /* per-bio data */
 struct dm_verity_fec_io {
 	struct rs_control *rs;	/* Reed-Solomon state */
@@ -148,5 +153,11 @@ static inline int verity_fec_ctr(struct dm_verity *v)
 }
 
 #endif /* CONFIG_DM_VERITY_FEC */
+
+static inline atomic64_t *verity_fec_corrected(struct dm_verity *v)
+{
+	/* Precondition: verity_fec_is_enabled(v). */
+	return &((struct dm_verity_fec_ex *)v->fec)->corrected;
+}
 
 #endif /* DM_VERITY_FEC_H */

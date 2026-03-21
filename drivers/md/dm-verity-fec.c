@@ -465,6 +465,7 @@ int verity_fec_decode(struct dm_verity *v, struct dm_verity_io *io,
 	}
 
 	memcpy(dest, fio->output, 1 << v->data_dev_block_bits);
+	atomic64_inc(verity_fec_corrected(v));
 
 done:
 	fio->level--;
@@ -649,14 +650,14 @@ int verity_fec_parse_opt_args(struct dm_arg_set *as, struct dm_verity *v,
  */
 int verity_fec_ctr_alloc(struct dm_verity *v)
 {
-	struct dm_verity_fec *f;
+	struct dm_verity_fec_ex *f;
 
-	f = kzalloc(sizeof(struct dm_verity_fec), GFP_KERNEL);
+	f = kzalloc(sizeof(struct dm_verity_fec_ex), GFP_KERNEL);
 	if (!f) {
 		v->ti->error = "Cannot allocate FEC structure";
 		return -ENOMEM;
 	}
-	v->fec = f;
+	v->fec = &f->base;
 
 	return 0;
 }

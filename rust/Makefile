@@ -7,7 +7,7 @@ obj-$(CONFIG_RUST) += core.o compiler_builtins.o ffi.o
 always-$(CONFIG_RUST) += exports_core_generated.h
 
 ifdef CONFIG_RUST_INLINE_HELPERS
-always-$(CONFIG_RUST) += helpers/helpers.bc
+always-$(CONFIG_RUST) += helpers/helpers.bc helpers/helpers_module.bc
 else
 obj-$(CONFIG_RUST) += helpers/helpers.o
 always-$(CONFIG_RUST) += exports_helpers_generated.h
@@ -357,9 +357,12 @@ $(obj)/bindings/bindings_helpers_generated.rs: $(src)/helpers/helpers.c FORCE
 
 quiet_cmd_rust_helper = HELPER  $@
       cmd_rust_helper = \
-	$(CC) $(filter-out $(CFLAGS_REMOVE_helpers/helpers.o), $(c_flags)) -c -g0 $< -emit-llvm -o $@
+	$(CC) $(filter-out $(CFLAGS_REMOVE_helpers/helpers.o), $(c_flags)) \
+		-c -g0 $< $(if $(filter %_module.bc,$@),-DMODULE) -emit-llvm -o $@
 
-$(obj)/helpers/helpers.bc: $(obj)/helpers/helpers.c FORCE
+$(obj)/helpers/helpers.bc: private part-of-builtin := y
+$(obj)/helpers/helpers_module.bc: private part-of-module := y
+$(obj)/helpers/helpers.bc $(obj)/helpers/helpers_module.bc: $(src)/helpers/helpers.c FORCE
 	+$(call if_changed_dep,rust_helper)
 
 rust_exports = $(NM) -p --defined-only $(1) | awk '$$2~/(T|R|D|B)/ && $$3!~/__cfi/ && $$3!~/__odr_asan/ { printf $(2),$$3 }'
@@ -415,9 +418,11 @@ quiet_cmd_rustc_library = $(if $(skip_clippy),RUSTC,$(RUSTC_OR_CLIPPY_QUIET)) L 
 		--crate-name $(patsubst %.o,%,$(notdir $@)) $< \
 		--sysroot=/dev/null \
 		-Zunstable-options \
-	$(if $(link_helper),;$(LLVM_LINK) --internalize --suppress-warnings $(patsubst %.o,%.bc,$@) $(obj)/helpers/helpers.bc -o $(patsubst %.o,%.m.bc,$@); \
-		$(CC) $(CLANG_FLAGS) $(KBUILD_CFLAGS) -c $(patsubst %.o,%.m.bc,$@) -o $@) \
+	$(if $(link_helper),;$(LLVM_LINK) --internalize --suppress-warnings $(patsubst %.o,%.bc,$@) \
+		$(obj)/helpers/helpers$(if $(part-of-module),_module).bc -o $(patsubst %.o,%.m.bc,$@); \
+		$(CC) $(CLANG_FLAGS) $(KBUILD_CFLAGS) -Wno-override-module -c $(patsubst %.o,%.m.bc,$@) -o $@) \
 	$(if $(rustc_objcopy),;$(OBJCOPY) $(rustc_objcopy) $@) \
+	$(cmd_ld_single) \
 	$(cmd_objtool)
 
 rust-analyzer:

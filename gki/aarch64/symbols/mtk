@@ -1311,6 +1311,7 @@
   iio_push_to_buffers
   iio_read_channel_attribute
   iio_read_channel_processed
+  iio_read_channel_processed_scale
   iio_read_channel_raw
   iio_trigger_notify_done
   import_iovec
