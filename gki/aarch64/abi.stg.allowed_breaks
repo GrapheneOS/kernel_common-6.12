@@ -141,3 +141,8 @@ type 'struct rb_thread_layout' changed
 type 'struct pkvm_module_ops' changed
   member 'u64 __kabi_reserved5' was removed
   member 'union { int(* device_register_power_lock)(u64, void*, int(*)(void*, bool)); struct { u64 __kabi_reserved5; }; union { }; }' was added
+
+variable symbol changed from 'u64 vendor_data_pad[128]' to 'u64 vendor_data_pad[160]'
+  type changed from 'u64[128]' to 'u64[160]'
+    number of elements changed from 128 to 160
+
