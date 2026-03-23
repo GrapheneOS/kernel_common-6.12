@@ -442,6 +442,7 @@ struct folio *__read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
 	struct folio *new_folio = NULL;
 	struct folio *result = NULL;
 	void *shadow = NULL;
+	size_t count = 0;
 
 	*new_page_allocated = false;
 	si = get_swap_device(entry);
@@ -450,6 +451,7 @@ struct folio *__read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
 
 	for (;;) {
 		int err;
+		bool skip = false;
 		/*
 		 * First check the swap cache.  Since this is normally
 		 * called after swap_cache_get_folio() failed, re-calling
@@ -510,6 +512,10 @@ struct folio *__read_swap_cache_async(swp_entry_t entry, gfp_t gfp_mask,
 		 * __read_swap_cache_async(), which has set SWAP_HAS_CACHE
 		 * in swap_map, but not yet added its folio to swap cache.
 		 */
+		trace_android_rvh_read_swap_cache_async_timeout(&count, &skip);
+		if (skip)
+			continue;
+
 		schedule_timeout_uninterruptible(1);
 	}
 
