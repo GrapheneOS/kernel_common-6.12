@@ -731,3 +731,6 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_mm_init);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_typec_tcpm_log);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_pci_pm_verify_state);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_skip_cma);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_delay_schedule);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_task_fork);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_task_exit);
