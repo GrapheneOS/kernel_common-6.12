@@ -279,7 +279,6 @@ static inline void update_used_max(struct zram *zram,
 					  &cur_max, pages));
 }
 
-#if IS_ENABLED(CONFIG_ZRAM_ANDROID_IOCTL)
 static bool zram_can_store_page(struct zram *zram)
 {
 	unsigned long alloced_pages;
@@ -289,7 +288,6 @@ static bool zram_can_store_page(struct zram *zram)
 
 	return !zram->limit_pages || alloced_pages <= zram->limit_pages;
 }
-#endif
 
 static inline void zram_fill_page(void *ptr, unsigned long len,
 					unsigned long value)
