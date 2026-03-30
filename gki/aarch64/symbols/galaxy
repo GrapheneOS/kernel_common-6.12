@@ -137,6 +137,7 @@
   __traceiter_android_vh_handle_add_blks_map
   __traceiter_android_vh_handle_add_fec_mismatch_blks
   __traceiter_android_vh_handle_get_b_info
+  __traceiter_android_vh_reasm_timer_adjust
   __tracepoint_android_rvh_arm64_serror_panic
   __tracepoint_android_rvh_die_kernel_fault
   __tracepoint_android_rvh_do_el1_bti
@@ -228,6 +229,7 @@
   __tracepoint_android_vh_handle_add_skipped_blks
   __tracepoint_android_vh_handle_add_blks_map
   __tracepoint_android_vh_handle_get_b_info
+  __tracepoint_android_vh_reasm_timer_adjust
   usb_alloc_dev
   usb_set_device_state
   usbnet_change_mtu
