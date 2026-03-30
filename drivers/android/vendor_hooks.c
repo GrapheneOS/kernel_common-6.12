@@ -736,3 +736,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_delay_schedule);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_task_fork);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_lock_task_exit);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_is_rndis_enabled);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_reasm_timer_adjust);
