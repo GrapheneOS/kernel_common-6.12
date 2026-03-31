@@ -27,6 +27,16 @@ bool pkvm_is_hyp_created(struct kvm *kvm);
 int pkvm_create_hyp_vcpu(struct kvm_vcpu *vcpu);
 void pkvm_host_reclaim_page(struct kvm *host_kvm, phys_addr_t ipa);
 int pvkm_enable_smc_forwarding(struct file *kvm_file);
+
+/*
+ * Mask of iflags that the host is permitted to update for non-protected VMs.
+ * Crucially excludes DEBUG_STATE_SAVE_SPE and DEBUG_STATE_SAVE_TRBE to
+ * ensure EL2 remains in control of debug hardware state saving.
+ */
+#define PKVM_ALLOWED_HOST_IFLAGS                                           \
+	(unpack_vcpu_flag(PC_UPDATE_REQ) | unpack_vcpu_flag(DEBUG_DIRTY) | \
+	 unpack_vcpu_flag(PKVM_HOST_STATE_DIRTY))
+
 /*
  * This functions as an allow-list of protected VM capabilities.
  * Features not explicitly allowed by this function are denied.
