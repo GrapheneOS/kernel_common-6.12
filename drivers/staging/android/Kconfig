@@ -1,4 +1,9 @@
 # SPDX-License-Identifier: GPL-2.0
+menu "Android"
+
+config ANDROID_STAGING
+	bool
+
 config ASHMEM
 	bool "Enable the Anonymous Shared Memory Subsystem"
 	depends on SHMEM
@@ -17,3 +22,5 @@ config ASHMEM_RUST
 
 config ASHMEM_C
 	def_bool ASHMEM && !ASHMEM_RUST
+
+endmenu
