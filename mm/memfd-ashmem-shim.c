@@ -13,7 +13,8 @@
 #include <linux/memfd.h>
 #include <linux/uaccess.h>
 
-#include "../drivers/staging/android/ashmem.h"
+#include "memfd-ashmem-shim.h"
+#include "memfd-ashmem-shim-internal.h"
 
 /* memfd file names all start with memfd: */
 #define MEMFD_PREFIX "memfd:"
@@ -109,7 +110,7 @@ static long set_prot_mask(struct file *file, unsigned long prot)
 }
 
 /*
- * ashmem_memfd_ioctl - ioctl handler for ashmem commands
+ * memfd_ashmem_shim_ioctl - ioctl handler for ashmem commands
  * @file: The shmem file.
  * @cmd: The ioctl command.
  * @arg: The argument for the ioctl command.
@@ -120,17 +121,10 @@ static long set_prot_mask(struct file *file, unsigned long prot)
  * The ioctl handler attempts to retain as much compatibility with the ashmem
  * driver as possible.
  */
-long ashmem_memfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+long memfd_ashmem_shim_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 {
 	long ret = -ENOTTY;
 	unsigned long inode_nr;
-
-#ifdef CONFIG_COMPAT
-	if (cmd == COMPAT_ASHMEM_SET_SIZE)
-		cmd = ASHMEM_SET_SIZE;
-	else if (cmd == COMPAT_ASHMEM_SET_PROT_MASK)
-		cmd = ASHMEM_SET_PROT_MASK;
-#endif
 
 	switch (cmd) {
 	/*
@@ -205,3 +199,15 @@ long ashmem_memfd_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 
 	return ret;
 }
+
+#ifdef CONFIG_COMPAT
+long memfd_ashmem_shim_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	if (cmd == COMPAT_ASHMEM_SET_SIZE)
+		cmd = ASHMEM_SET_SIZE;
+	else if (cmd == COMPAT_ASHMEM_SET_PROT_MASK)
+		cmd = ASHMEM_SET_PROT_MASK;
+
+	return memfd_ashmem_shim_ioctl(file, cmd, arg);
+}
+#endif
