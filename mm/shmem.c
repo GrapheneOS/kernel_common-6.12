@@ -91,11 +91,6 @@ static struct vfsmount *shm_mnt __ro_after_init;
 #include "internal.h"
 
 #define BLOCKS_PER_PAGE  (PAGE_SIZE/512)
-
-#ifdef CONFIG_MEMFD_ASHMEM_SHIM
-#include "memfd-ashmem-shim.h"
-#endif
-
 #define VM_ACCT(size)    (PAGE_ALIGN(size) >> PAGE_SHIFT)
 
 /* Pretend that each entry is of this size in directory's i_size */
@@ -4907,13 +4902,6 @@ static const struct file_operations shmem_file_operations = {
 	.splice_read	= shmem_file_splice_read,
 	.splice_write	= iter_file_splice_write,
 	.fallocate	= shmem_fallocate,
-#endif
-#ifdef CONFIG_MEMFD_ASHMEM_SHIM
-	.unlocked_ioctl	= memfd_ashmem_shim_ioctl,
-#ifdef CONFIG_COMPAT
-	.compat_ioctl	= memfd_ashmem_shim_compat_ioctl,
-
-#endif
 #endif
 #ifdef CONFIG_ASHMEM_RUST
 	.unlocked_ioctl	= ashmem_memfd_ioctl,
