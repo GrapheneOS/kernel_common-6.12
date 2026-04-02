@@ -150,7 +150,8 @@ FIXTURE_SETUP(wrapfd_tests)
 		SKIP(return, "Skipping all tests as non-root");
 
 	self->page_size = (size_t)sysconf(_SC_PAGESIZE);
-	self->size = self->page_size * FILE_SZ_PAGES;
+	/* Intentionally make the file size page unaligned */
+	self->size = self->page_size * FILE_SZ_PAGES - self->page_size / 2;
 
 	self->dev_fd = open("/dev/wrapfd", O_RDONLY);
 	ASSERT_TRUE(self->dev_fd >= 0);
