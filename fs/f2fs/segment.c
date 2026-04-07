@@ -27,6 +27,8 @@
 
 #define __reverse_ffz(x) __reverse_ffs(~(x))
 
+struct android_sec_entry *android_sec_entries;
+
 static struct kmem_cache *discard_entry_slab;
 static struct kmem_cache *discard_cmd_slab;
 static struct kmem_cache *sit_entry_set_slab;
