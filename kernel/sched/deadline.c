@@ -2674,6 +2674,21 @@ static void put_prev_task_dl(struct rq *rq, struct task_struct *p, struct task_s
 	if (task_is_blocked(p))
 		return;
 
+	/*
+	 * With proxy-exec its possible the following call
+	 * chain from update_curr_dl() called above has already
+	 * added us to the pushable list:
+	 * update_curr_dl()
+	 * -> update_curr_dl_se()
+	 *    -> enqueue_task_dl()
+	 *       -> enqueue_pushable_dl_task()
+	 *
+	 * So check if we're already added to make sure we don't
+	 * get added twice
+	 */
+	if (!RB_EMPTY_NODE(&p->pushable_dl_tasks))
+		return;
+
 	if (on_dl_rq(&p->dl) && p->nr_cpus_allowed > 1)
 		enqueue_pushable_dl_task(rq, p);
 }
