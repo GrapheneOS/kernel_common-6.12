@@ -2686,9 +2686,10 @@ static void put_prev_task_dl(struct rq *rq, struct task_struct *p, struct task_s
 	 * So check if we're already added to make sure we don't
 	 * get added twice
 	 */
+#ifdef CONFIG_SMP
 	if (!RB_EMPTY_NODE(&p->pushable_dl_tasks))
 		return;
-
+#endif
 	if (on_dl_rq(&p->dl) && p->nr_cpus_allowed > 1)
 		enqueue_pushable_dl_task(rq, p);
 }
