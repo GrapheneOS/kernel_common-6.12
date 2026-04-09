@@ -644,7 +644,7 @@ const struct tegra_fuse_soc tegra186_fuse_soc = {
 };
 #endif
 
-#if defined(CONFIG_ARCH_TEGRA_194_SOC)
+#if defined(CONFIG_ARCH_TEGRA_194_SOC) || defined(CONFIG_ARCH_TEGRA_234_SOC)
 static const struct nvmem_cell_info tegra194_fuse_cells[] = {
 	{
 		.name = "xusb-pad-calibration",
