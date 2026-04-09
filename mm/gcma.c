@@ -776,8 +776,6 @@ static void gcma_cc_store_page(int hash_id, struct cleancache_filekey key,
 	bool allow_nonworkingset = false;
 
 	trace_android_vh_gcma_cc_store_page_bypass(&bypass);
-	if (bypass)
-		return;
 	/*
 	 * This cleancache function is called under irq disabled so every
 	 * locks in this function should take of the irq if they are
@@ -793,7 +791,7 @@ static void gcma_cc_store_page(int hash_id, struct cleancache_filekey key,
 find_inode:
 	inode = find_and_get_gcma_inode(gcma_fs, &key);
 	if (!inode) {
-		if (!workingset && !allow_nonworkingset)
+		if ((!workingset && !allow_nonworkingset) || bypass)
 			return;
 		inode = add_gcma_inode(gcma_fs, &key);
 		if (!IS_ERR(inode))
@@ -812,14 +810,14 @@ load_page:
 	xa_lock(&inode->pages);
 	g_page = xa_load(&inode->pages, offset);
 	if (g_page) {
-		if (!workingset && !allow_nonworkingset) {
+		if ((!workingset && !allow_nonworkingset) || bypass) {
 			gcma_erase_page(inode, offset, g_page, true);
 			goto out_unlock;
 		}
 		goto copy;
 	}
 
-	if (!workingset && !allow_nonworkingset)
+	if ((!workingset && !allow_nonworkingset) || bypass)
 		goto out_unlock;
 
 	g_page = gcma_alloc_page();
