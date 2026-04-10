@@ -663,6 +663,9 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 {
 	struct wrapfd_load wrapfd_load;
 	struct file *file;
+	loff_t file_offs;
+	loff_t buf_offs;
+	loff_t len;
 	loff_t end;
 	int ret = 0;
 
@@ -670,10 +673,17 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 			   sizeof(wrapfd_load)))
 		return -EFAULT;
 
-	if (!PAGE_ALIGNED(wrapfd_load.file_offs))
+	file_offs = wrapfd_load.file_offs;
+	buf_offs = wrapfd_load.buf_offs;
+	len = wrapfd_load.len;
+
+	if (file_offs < 0 || buf_offs < 0 || len < 0)
 		return -EINVAL;
 
-	if (!PAGE_ALIGNED(wrapfd_load.buf_offs))
+	if (!PAGE_ALIGNED(file_offs))
+		return -EINVAL;
+
+	if (!PAGE_ALIGNED(buf_offs))
 		return -EINVAL;
 
 	if (wrapfd_load.reserved || wrapfd_load.pad)
@@ -703,8 +713,7 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 		goto put_file;
 	}
 
-	if (check_add_overflow(wrapfd_load.file_offs, wrapfd_load.len,
-			       &end)) {
+	if (check_add_overflow(file_offs, len, &end)) {
 		ret = -EINVAL;
 		goto put_file;
 	}
@@ -722,9 +731,7 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 		goto put_file;
 
 	ret = ctx->content->ops->load(ctx->content, file,
-				      wrapfd_load.file_offs,
-				      wrapfd_load.buf_offs,
-				      wrapfd_load.len);
+				      file_offs, buf_offs, len);
 	spin_lock(&ctx->lock);
 	unblock_operations(ctx);
 	spin_unlock(&ctx->lock);
