@@ -335,17 +335,38 @@ static struct wrap_ctx *create_wrap_ctx(void)
 	return ctx;
 }
 
-static inline bool has_owner(struct wrap_ctx *ctx)
+static inline void reset_owner(struct wrap_ctx *ctx)
 {
 	assert_spin_locked(&ctx->lock);
-	return ctx->owner.task || ctx->owner.dev;
+	put_task_struct(ctx->owner.task);
+	ctx->owner.task = NULL;
+}
+
+static inline struct task_struct *get_valid_owner(struct wrap_ctx *ctx)
+{
+	assert_spin_locked(&ctx->lock);
+
+	if (!ctx->owner.task)
+		return NULL;
+
+	/* If task exits (passed exit_mm), reset the owner. */
+	if (!ctx->owner.task->mm)
+		reset_owner(ctx);
+
+	return ctx->owner.task;
+}
+
+static inline bool has_owner(struct wrap_ctx *ctx)
+{
+	return get_valid_owner(ctx) || ctx->owner.dev;
 }
 
 static inline bool is_owner_task(struct wrap_ctx *ctx,
 				 struct task_struct *task)
 {
-	assert_spin_locked(&ctx->lock);
-	return ctx->owner.task && ctx->owner.task->mm == task->mm;
+	struct task_struct *owner_task = get_valid_owner(ctx);
+
+	return owner_task && task->group_leader == owner_task;
 }
 
 static inline bool is_owner_dev(struct wrap_ctx *ctx,
@@ -649,7 +670,7 @@ static int wrap_file_acquire_ownership(struct wrap_ctx *ctx)
 		goto unlock;
 	}
 
-	ctx->owner.task = current;
+	ctx->owner.task = get_task_struct(current->group_leader);
 unlock:
 	spin_unlock(&ctx->lock);
 
@@ -666,7 +687,7 @@ static int wrap_file_release_ownership(struct wrap_ctx *ctx)
 	if (ret)
 		goto unlock;
 
-	ctx->owner.task = NULL;
+	reset_owner(ctx);
 	ctx->allow_guests = false;
 unlock:
 	spin_unlock(&ctx->lock);
@@ -880,7 +901,7 @@ static int wrap_file_ioctl(struct wrap_ctx *ctx,
 	int ret = 0;
 
 	spin_lock(&ctx->lock);
-	if (!ctx->allow_guests && is_owner(ctx) &&
+	if (!ctx->allow_guests && has_owner(ctx) &&
 	    !is_owner_task(ctx, current)) {
 		ret = -EBUSY;
 		goto unlock;
@@ -970,10 +991,12 @@ static long wrap_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 static void wrap_show_fdinfo(struct seq_file *m, struct file *file)
 {
 	struct wrap_ctx *ctx = file->private_data;
+	struct task_struct *owner_task;
 
 	spin_lock(&ctx->lock);
-	if (ctx->owner.task) {
-		seq_printf(m, "owner:\t%d\n", ctx->owner.task->pid);
+	owner_task = get_valid_owner(ctx);
+	if (owner_task) {
+		seq_printf(m, "owner:\t%d\n", owner_task->pid);
 	} else {
 		if (ctx->owner.dev)
 			seq_printf(m, "owner:\t<device>\n");
