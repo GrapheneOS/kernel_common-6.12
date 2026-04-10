@@ -299,6 +299,7 @@ struct wrap_owner {
 
 struct wrap_ctx_mapping {
 	refcount_t refcnt;
+	struct file *file;
 	struct wrap_ctx *ctx;
 	const struct vm_operations_struct *content_vm_ops;
 	struct vm_operations_struct vm_ops;
@@ -441,6 +442,7 @@ static void wrap_vm_open(struct vm_area_struct *vma)
 static void wrap_vm_close(struct vm_area_struct *vma)
 {
 	struct wrap_ctx_mapping *mapping;
+	struct file *file = NULL;
 	struct wrap_ctx *ctx;
 
 	mapping = container_of(vma->vm_ops, struct wrap_ctx_mapping, vm_ops);
@@ -453,9 +455,14 @@ static void wrap_vm_close(struct vm_area_struct *vma)
 		ctx->map_count--;
 	else
 		pr_warn("wrapfd map count underflow\n");
-	if (refcount_dec_and_test(&mapping->refcnt))
+	if (refcount_dec_and_test(&mapping->refcnt)) {
+		if (mapping->file)
+			file = mapping->file;
 		kfree(mapping);
+	}
 	spin_unlock(&ctx->lock);
+	if (file)
+		fput(file);
 }
 
 static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
@@ -551,6 +558,14 @@ unlock:
 	vma->vm_ops = &mapping->vm_ops;
 	mapping->ctx = ctx;
 	refcount_set(&mapping->refcnt, 1);
+	/*
+	 * content->ops->mmap might replace original vma->vm_file and vma will
+	 * lose its association with the wrapfd file. In such cases we need to
+	 * take a reference on the wrapfd file and store it to drop the
+	 * refcount mapping is removed.
+	 */
+	if (vma->vm_file != file)
+		mapping->file = get_file(file);
 	spin_unlock(&ctx->lock);
 
 	return 0;
