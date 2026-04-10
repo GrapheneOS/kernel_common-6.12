@@ -281,7 +281,7 @@ static struct wrap_content *alloc_dmabuf_content(struct dma_buf *dmabuf,
 
 	dmabuf_content = kmalloc(sizeof(*dmabuf_content), GFP_KERNEL);
 	if (!dmabuf_content)
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 
 	get_dma_buf(dmabuf);
 	dmabuf_content->dmabuf = dmabuf;
@@ -1119,20 +1119,23 @@ static const struct file_operations wrap_fops = {
 
 static struct wrap_content *create_content_for(int fd, unsigned long prot)
 {
+	bool is_file_writable, writable;
 	struct wrap_content *content;
 	struct dma_buf *dmabuf;
 
 	dmabuf = dma_buf_get(fd);
-	if (!IS_ERR(dmabuf)) {
-		bool writable = !!(prot & PROT_WRITE);
+	if (IS_ERR(dmabuf))
+		return ERR_PTR(PTR_ERR(dmabuf));
 
+	writable = !!(prot & PROT_WRITE);
+	is_file_writable = !!(dmabuf->file->f_mode & FMODE_WRITE);
+	if (writable && !is_file_writable)
+		content = ERR_PTR(-EACCES);
+	else
 		content = alloc_dmabuf_content(dmabuf, writable);
-		dma_buf_put(dmabuf);
+	dma_buf_put(dmabuf);
 
-		return content ? content : ERR_PTR(-ENOMEM);
-	}
-
-	return ERR_PTR(-EINVAL);
+	return content;
 }
 
 static int wrap_file(struct wrap_ctx *ctx,
