@@ -314,6 +314,7 @@ struct wrap_ctx {
 	struct wrap_owner owner;
 	bool allow_guests;
 	unsigned long map_count;
+	unsigned long use_count;
 	/*
 	 * Mask of blocked operations when lock is not held due to possiblity
 	 * of sleep during the ongoing operation.
@@ -375,7 +376,7 @@ static int can_modify(struct wrap_ctx *ctx, struct task_struct *task,
 	if (!is_owner_task(ctx, task))
 		return -EBUSY;
 
-	if (ctx->map_count > 0)
+	if (ctx->map_count > 0 || ctx->use_count > 0)
 		return -EINVAL;
 
 	if (check_content && !ctx->content)
@@ -638,7 +639,7 @@ static int wrap_file_acquire_ownership(struct wrap_ctx *ctx)
 		goto unlock;
 	}
 
-	if (ctx->map_count > 0) {
+	if (ctx->map_count > 0 || ctx->use_count > 0) {
 		ret = -EINVAL;
 		goto unlock;
 	}
@@ -876,13 +877,53 @@ unlock:
 static int wrap_file_ioctl(struct wrap_ctx *ctx,
 			   unsigned int cmd, unsigned long arg)
 {
-	if (!ctx->content)
-		return -ENOENT; /* Wrap is empty */
+	int ret = 0;
 
-	if (ctx->content->ops->ioctl)
-		return ctx->content->ops->ioctl(ctx->content, cmd, arg);
+	spin_lock(&ctx->lock);
+	if (!ctx->allow_guests && is_owner(ctx) &&
+	    !is_owner_task(ctx, current)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
 
-	return -ENOIOCTLCMD;
+	/*
+	 * If usage is blocked, the content is being rewrapped or emptied.
+	 * Treat this as if the wrap is already empty.
+	 */
+	if (!can_use(ctx)) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	if (!ctx->content) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	if (!ctx->content->ops->ioctl) {
+		ret = -ENOIOCTLCMD;
+		goto unlock;
+	}
+
+	/*
+	 * Increased use_count prevents changes in the
+	 * ownership, rewrapping or emptying the content.
+	 * Content is stable.
+	 */
+	ctx->use_count++;
+unlock:
+	spin_unlock(&ctx->lock);
+
+	if (ret)
+		return ret;
+
+	ret = ctx->content->ops->ioctl(ctx->content, cmd, arg);
+
+	spin_lock(&ctx->lock);
+	ctx->use_count--;
+	spin_unlock(&ctx->lock);
+
+	return ret;
 }
 
 static long wrap_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -979,7 +1020,7 @@ int wrapfd_get_mappable(struct file *file, struct device *dev,
 		goto unlock;
 	}
 
-	if (ctx->map_count > 0) {
+	if (ctx->map_count > 0 || ctx->use_count > 0) {
 		ret = -EINVAL;
 		goto unlock;
 	}
