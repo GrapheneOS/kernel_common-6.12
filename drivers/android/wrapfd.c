@@ -305,8 +305,8 @@ struct wrap_ctx_mapping {
 	struct vm_operations_struct vm_ops;
 };
 
-#define OP_BLOCKED_MODIFICATION	BIT(0)
-#define OP_BLOCKED_MAPPING	BIT(1)
+#define MODIFICATIONS_BLOCKED	BIT(0)
+#define USAGE_BLOCKED		BIT(1)
 
 struct wrap_ctx {
 	struct wrap_content *content;
@@ -334,7 +334,7 @@ static struct wrap_ctx *create_wrap_ctx(void)
 	return ctx;
 }
 
-static inline bool is_owner(struct wrap_ctx *ctx)
+static inline bool has_owner(struct wrap_ctx *ctx)
 {
 	assert_spin_locked(&ctx->lock);
 	return ctx->owner.task || ctx->owner.dev;
@@ -368,7 +368,7 @@ static inline int publish_wrap(struct wrap_ctx *ctx,
 	return ret;
 }
 
-static int can_access(struct wrap_ctx *ctx, struct task_struct *task,
+static int can_modify(struct wrap_ctx *ctx, struct task_struct *task,
 		      bool check_content)
 {
 	assert_spin_locked(&ctx->lock);
@@ -384,10 +384,10 @@ static int can_access(struct wrap_ctx *ctx, struct task_struct *task,
 	return 0;
 }
 
-static bool can_map(struct wrap_ctx *ctx)
+static bool can_use(struct wrap_ctx *ctx)
 {
 	assert_spin_locked(&ctx->lock);
-	return (ctx->block_mask & OP_BLOCKED_MAPPING) == 0;
+	return (ctx->block_mask & USAGE_BLOCKED) == 0;
 }
 
 static int block_operations(struct wrap_ctx *ctx, unsigned int mask)
@@ -396,10 +396,10 @@ static int block_operations(struct wrap_ctx *ctx, unsigned int mask)
 
 	assert_spin_locked(&ctx->lock);
 	/* Any request should at least block modifications. */
-	if (WARN_ON((mask & OP_BLOCKED_MODIFICATION) == 0))
+	if (WARN_ON((mask & MODIFICATIONS_BLOCKED) == 0))
 		return -EINVAL;
 
-	ret = can_access(ctx, current, true);
+	ret = can_modify(ctx, current, true);
 	if (ret)
 		return ret;
 
@@ -474,17 +474,17 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 	int ret = 0;
 
 	spin_lock(&ctx->lock);
-	if (!ctx->allow_guests && is_owner(ctx) &&
+	if (!ctx->allow_guests && has_owner(ctx) &&
 	    !is_owner_task(ctx, current)) {
 		ret = -EBUSY;
 		goto unlock;
 	}
 
 	/*
-	 * If mappings are blocked the content is being rewrapped or emptied.
+	 * If usage is blocked, the content is being rewrapped or emptied.
 	 * Treat this as if the wrap is already empty.
 	 */
-	if (!can_map(ctx)) {
+	if (!can_use(ctx)) {
 		ret = -ENOENT;
 		goto unlock;
 	}
@@ -515,7 +515,7 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 	/*
 	 * Increased map_count prevents changes in the
 	 * ownership, rewrapping or emptying the content.
-	 * Therefore content is stable.
+	 * Content is stable.
 	 */
 	ctx->map_count++;
 unlock:
@@ -604,10 +604,10 @@ static int get_wrap_state(struct wrap_ctx *ctx,
 
 	spin_lock(&ctx->lock);
 	/*
-	 * If mappings are blocked the content is being rewrapped or emptied.
+	 * If usage is blocked, the content is being rewrapped or emptied.
 	 * Treat this as if the wrap is already empty.
 	 */
-	if (ctx->content && can_map(ctx)) {
+	if (ctx->content && can_use(ctx)) {
 		if (ctx->content->ops->is_writable(ctx->content))
 			wrapfd_get_state.state = WRAPFD_CONTENT_RDWR;
 		else
@@ -633,7 +633,7 @@ static int wrap_file_acquire_ownership(struct wrap_ctx *ctx)
 	if (is_owner_task(ctx, current))
 		goto unlock;
 
-	if (is_owner(ctx)) {
+	if (has_owner(ctx)) {
 		ret = -EBUSY;
 		goto unlock;
 	}
@@ -661,7 +661,7 @@ static int wrap_file_release_ownership(struct wrap_ctx *ctx)
 
 	spin_lock(&ctx->lock);
 
-	ret = can_access(ctx, current, false);
+	ret = can_modify(ctx, current, false);
 	if (ret)
 		goto unlock;
 
@@ -739,7 +739,7 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 	}
 
 	spin_lock(&ctx->lock);
-	ret = block_operations(ctx, OP_BLOCKED_MODIFICATION);
+	ret = block_operations(ctx, MODIFICATIONS_BLOCKED);
 	spin_unlock(&ctx->lock);
 
 	if (ret)
@@ -777,7 +777,7 @@ static int wrap_file_rewrap(struct wrap_ctx *ctx,
 
 	spin_lock(&ctx->lock);
 	ret = block_operations(ctx,
-			       OP_BLOCKED_MODIFICATION | OP_BLOCKED_MAPPING);
+			       MODIFICATIONS_BLOCKED | USAGE_BLOCKED);
 	if (!ret) {
 		content = ctx->content;
 		ctx->content = NULL;
@@ -840,7 +840,7 @@ static int wrap_file_empty(struct wrap_ctx *ctx)
 	spin_lock(&ctx->lock);
 
 	ret = block_operations(ctx,
-			       OP_BLOCKED_MODIFICATION | OP_BLOCKED_MAPPING);
+			       MODIFICATIONS_BLOCKED | USAGE_BLOCKED);
 	if (ret)
 		goto unlock;
 
@@ -862,7 +862,7 @@ static int wrap_file_allow_guests(struct wrap_ctx *ctx, bool allow)
 
 	spin_lock(&ctx->lock);
 
-	ret = can_access(ctx, current, true);
+	ret = can_modify(ctx, current, true);
 	if (ret)
 		goto unlock;
 
@@ -974,7 +974,7 @@ int wrapfd_get_mappable(struct file *file, struct device *dev,
 
 	spin_lock(&ctx->lock);
 
-	if (is_owner(ctx) && !is_owner_dev(ctx, dev)) {
+	if (has_owner(ctx) && !is_owner_dev(ctx, dev)) {
 		ret = -EBUSY;
 		goto unlock;
 	}
