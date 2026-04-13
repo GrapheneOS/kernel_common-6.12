@@ -57,18 +57,17 @@ static void __debug_restore_spe(u64 pmscr_el1, u64 pmblimitr_el1)
 
 static void __debug_save_trace(u64 *trfcr_el1, u64 *trblimitr_el1)
 {
-	*trblimitr_el1 = read_sysreg_s(SYS_TRBLIMITR_EL1);
+	/*
+	 * Prohibit trace generation while we are in guest.
+	 * Since access to TRFCR_EL1 is trapped, the guest can't
+	 * modify the filtering set by the host.
+	 */
+	*trfcr_el1 = read_sysreg_el1(SYS_TRFCR);
+	write_sysreg_el1(0, SYS_TRFCR);
 
 	/* Check if the TRBE is enabled */
+	*trblimitr_el1 = read_sysreg_s(SYS_TRBLIMITR_EL1);
 	if (*trblimitr_el1 & TRBLIMITR_EL1_E) {
-		/*
-		 * Prohibit trace generation while we are in guest.
-		 * Since access to TRFCR_EL1 is trapped, the guest can't
-		 * modify the filtering set by the host.
-		 */
-		*trfcr_el1 = read_sysreg_el1(SYS_TRFCR);
-		write_sysreg_el1(0, SYS_TRFCR);
-
 		/*
 		 * The host has enabled the Trace Buffer Unit so we have
 		 * to beat the CPU with a stick until it stops accessing
