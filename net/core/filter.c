@@ -5202,6 +5202,17 @@ static u64 __bpf_get_netns_cookie(struct sock *sk)
 	return net->net_cookie;
 }
 
+BPF_CALL_1(bpf_get_netns_cookie, struct sk_buff *, skb)
+{
+	return __bpf_get_netns_cookie(skb && skb->sk ? skb->sk : NULL);
+}
+
+static const struct bpf_func_proto bpf_get_netns_cookie_proto = {
+	.func           = bpf_get_netns_cookie,
+	.ret_type       = RET_INTEGER,
+	.arg1_type      = ARG_PTR_TO_CTX_OR_NULL,
+};
+
 BPF_CALL_1(bpf_get_netns_cookie_sock, struct sock *, ctx)
 {
 	return __bpf_get_netns_cookie(ctx);
@@ -8128,6 +8139,8 @@ sk_filter_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 		return &bpf_skb_load_bytes_relative_proto;
 	case BPF_FUNC_get_socket_cookie:
 		return &bpf_get_socket_cookie_proto;
+	case BPF_FUNC_get_netns_cookie:
+		return &bpf_get_netns_cookie_proto;
 	case BPF_FUNC_get_socket_uid:
 		return &bpf_get_socket_uid_proto;
 	case BPF_FUNC_perf_event_output:
@@ -8259,6 +8272,8 @@ tc_cls_act_func_proto(enum bpf_func_id func_id, const struct bpf_prog *prog)
 		return &bpf_skb_under_cgroup_proto;
 	case BPF_FUNC_get_socket_cookie:
 		return &bpf_get_socket_cookie_proto;
+	case BPF_FUNC_get_netns_cookie:
+		return &bpf_get_netns_cookie_proto;
 	case BPF_FUNC_get_socket_uid:
 		return &bpf_get_socket_uid_proto;
 	case BPF_FUNC_fib_lookup:

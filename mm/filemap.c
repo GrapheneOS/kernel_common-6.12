@@ -1031,6 +1031,7 @@ int filemap_add_folio(struct address_space *mapping, struct folio *folio,
 		WARN_ON_ONCE(folio_test_active(folio));
 		if (!(gfp & __GFP_WRITE) && shadow)
 			workingset_refault(folio, shadow);
+		trace_android_vh_filemap_adjust_folio_flags(mapping, folio, index);
 		folio_add_lru(folio);
 	}
 	return ret;
@@ -3291,6 +3292,11 @@ static struct file *do_sync_mmap_readahead(struct vm_fault *vmf)
 	struct file *fpin = NULL;
 	unsigned long vm_flags = vmf->vma->vm_flags;
 	unsigned short mmap_miss;
+	bool skip = false;
+
+	trace_android_vh_do_sync_mmap_readahead(vmf, &skip);
+	if (skip)
+		return fpin;
 
 #ifdef CONFIG_TRANSPARENT_HUGEPAGE
 	/* Use the readahead code, even if readahead is disabled */
@@ -3838,6 +3844,7 @@ static vm_fault_t filemap_map_order0_folio(struct vm_fault *vmf,
 	set_pte_range(vmf, folio, page, 1, addr);
 	(*rss)++;
 	folio_ref_inc(folio);
+	trace_android_vh_map_order0_folio(vmf->vma->vm_file, vmf->pgoff, folio, ret);
 
 	return ret;
 }

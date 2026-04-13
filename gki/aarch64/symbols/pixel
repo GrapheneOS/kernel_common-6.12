@@ -61,6 +61,7 @@
   bio_endio
   bio_end_io_acct_remapped
   bio_init
+  bio_put
   bio_start_io_acct
   bitmap_alloc
   __bitmap_andnot
@@ -88,6 +89,7 @@
   blk_mq_quiesce_tagset
   blk_mq_unfreeze_queue
   blk_mq_unquiesce_tagset
+  blk_op_str
   blk_put_queue
   blk_rq_map_user_io
   blk_rq_unmap_user
@@ -344,6 +346,7 @@
   __dev_change_net_namespace
   dev_close
   dev_coredumpm_timeout
+  dev_coredumpv
   _dev_crit
   dev_driver_string
   _dev_emerg
@@ -486,6 +489,7 @@
   devm_mbox_controller_register
   devm_memremap
   devm_mfd_add_devices
+  devm_nvmem_cell_get
   devm_nvmem_register
   devm_of_clk_add_hw_provider
   devm_of_icc_get
@@ -598,6 +602,7 @@
   disable_irq_nosync
   disable_percpu_irq
   dma_alloc_attrs
+  dma_alloc_noncontiguous
   dma_alloc_pages
   dma_async_device_register
   dma_async_device_unregister
@@ -643,6 +648,7 @@
   dma_fence_unwrap_next
   dma_fence_wait_timeout
   dma_free_attrs
+  dma_free_noncontiguous
   dma_free_pages
   dma_get_sgtable_attrs
   dma_get_slave_caps
@@ -662,6 +668,7 @@
   dma_map_sgtable
   dmam_free_coherent
   dma_mmap_attrs
+  dma_mmap_noncontiguous
   dmam_pool_create
   dma_pool_alloc
   dma_pool_create
@@ -681,6 +688,8 @@
   dma_unmap_page_attrs
   dma_unmap_resource
   dma_unmap_sg_attrs
+  dma_vmap_noncontiguous
+  dma_vunmap_noncontiguous
   __do_once_done
   __do_once_start
   do_SAK
@@ -860,10 +869,12 @@
   drm_framebuffer_lookup
   drm_gem_create_mmap_offset
   drm_gem_dmabuf_export
+  drm_gem_dmabuf_mmap
   drm_gem_dmabuf_release
   drm_gem_fb_create_handle
   drm_gem_fb_destroy
   drm_gem_handle_create
+  drm_gem_map_dma_buf
   drm_gem_mmap
   drm_gem_object_free
   drm_gem_object_init
@@ -875,6 +886,7 @@
   drm_gem_prime_import
   drm_gem_prime_import_dev
   drm_gem_private_object_init
+  drm_gem_unmap_dma_buf
   drm_gem_vmap_unlocked
   drm_gem_vm_close
   drm_gem_vm_open
@@ -1134,6 +1146,7 @@
   get_task_cred
   get_task_mm
   get_unused_fd_flags
+  get_user_ifreq
   get_user_pages
   get_user_pages_fast
   get_vaddr_frames
@@ -1493,6 +1506,7 @@
   ksize
   ksoftirqd
   kstat
+  kstat_irqs_usr
   kstrdup
   kstrndup
   kstrtobool
@@ -1695,6 +1709,7 @@
   mutex_trylock
   mutex_unlock
   napi_alloc_skb
+  napi_build_skb
   napi_complete_done
   napi_disable
   napi_enable
@@ -1765,6 +1780,7 @@
   nvmem_cell_put
   nvmem_cell_read
   nvmem_cell_read_u8
+  nvmem_cell_write
   nvmem_device_put
   nvmem_device_read
   nvmem_device_write
@@ -1826,6 +1842,7 @@
   of_graph_get_remote_node
   of_graph_is_present
   of_graph_parse_endpoint
+  of_icc_get
   of_icc_xlate_onecell
   of_iomap
   of_irq_find_parent
@@ -2128,6 +2145,7 @@
   proc_symlink
   proto_register
   proto_unregister
+  __pskb_copy_fclone
   pskb_expand_head
   __pskb_pull_tail
   ___pskb_trim
@@ -2142,6 +2160,7 @@
   put_sg_io_hdr
   __put_task_struct
   put_unused_fd
+  put_user_ifreq
   put_vaddr_frames
   pwm_apply_might_sleep
   pwrseq_device_get_drvdata
@@ -2175,6 +2194,7 @@
   raw_spin_rq_lock_nested
   raw_spin_rq_unlock
   _raw_spin_trylock
+  _raw_spin_trylock_bh
   _raw_spin_unlock
   _raw_spin_unlock_bh
   _raw_spin_unlock_irq
@@ -2439,6 +2459,7 @@
   skb_complete_wifi_ack
   skb_copy
   skb_copy_bits
+  skb_copy_datagram_from_iter
   skb_copy_datagram_iter
   skb_copy_expand
   skb_csum_hwoffload_help
@@ -2461,6 +2482,7 @@
   skb_store_bits
   skb_trim
   skb_unlink
+  sk_error_report
   sk_free
   skip_spaces
   sk_skb_reason_drop
@@ -2600,6 +2622,9 @@
   __srcu_read_unlock
   sscanf
   __stack_chk_fail
+  stack_trace_print
+  stack_trace_save
+  stack_trace_save_tsk
   static_key_count
   static_key_disable
   static_key_enable
@@ -2748,6 +2773,7 @@
   __traceiter_android_rvh_after_dequeue_task
   __traceiter_android_rvh_after_enqueue_task
   __traceiter_android_rvh_attach_entity_load_avg
+  __traceiter_android_rvh_blk_mq_has_request
   __traceiter_android_rvh_build_perf_domains
   __traceiter_android_rvh_can_migrate_task
   __traceiter_android_rvh_cgroup_force_kthread_migration
@@ -2774,6 +2800,7 @@
   __traceiter_android_rvh_post_init_entity_util_avg
   __traceiter_android_rvh_preempt_disable
   __traceiter_android_rvh_preempt_enable
+  __traceiter_android_rvh_read_swap_cache_async_timeout
   __traceiter_android_rvh_reclaim_folio_list
   __traceiter_android_rvh_remove_entity_load_avg
   __traceiter_android_rvh_rtmutex_prepare_setprio
@@ -2804,6 +2831,7 @@
   __traceiter_android_rvh_vmscan_kswapd_wake
   __traceiter_android_trigger_vendor_lmk_kill
   __traceiter_android_vh_adjust_kvmalloc_flags
+  __traceiter_android_vh_alter_futex_plist_add
   __traceiter_android_vh_arch_set_freq_scale
   __traceiter_android_vh_binder_proc_transaction_finish
   __traceiter_android_vh_binder_restore_priority
@@ -2815,6 +2843,7 @@
   __traceiter_android_vh_cpu_idle_enter
   __traceiter_android_vh_cpu_idle_exit
   __traceiter_android_vh_do_async_mmap_readahead
+  __traceiter_android_vh_do_sync_mmap_readahead
   __traceiter_android_vh_dump_throttled_rt_tasks
   __traceiter_android_vh_dup_task_struct
   __traceiter_android_vh_dwc3_core_soft_reset
@@ -2841,6 +2870,7 @@
   __traceiter_android_vh_prio_inheritance
   __traceiter_android_vh_prio_restore
   __traceiter_android_vh_put_task
+  __traceiter_android_vh_ra_alloc_retry
   __traceiter_android_vh_resume_end
   __traceiter_android_vh_rmqueue
   __traceiter_android_vh_rust_binder_restore_priority
@@ -2895,6 +2925,7 @@
   __traceiter_sched_util_est_cfs_tp
   __traceiter_sched_util_est_se_tp
   __traceiter_sched_wakeup
+  __traceiter_sk_data_ready
   __traceiter_softirq_entry
   __traceiter_softirq_exit
   __traceiter_suspend_resume
@@ -2905,6 +2936,7 @@
   __tracepoint_android_rvh_after_dequeue_task
   __tracepoint_android_rvh_after_enqueue_task
   __tracepoint_android_rvh_attach_entity_load_avg
+  __tracepoint_android_rvh_blk_mq_has_request
   __tracepoint_android_rvh_build_perf_domains
   __tracepoint_android_rvh_can_migrate_task
   __tracepoint_android_rvh_cgroup_force_kthread_migration
@@ -2931,6 +2963,7 @@
   __tracepoint_android_rvh_post_init_entity_util_avg
   __tracepoint_android_rvh_preempt_disable
   __tracepoint_android_rvh_preempt_enable
+  __tracepoint_android_rvh_read_swap_cache_async_timeout
   __tracepoint_android_rvh_reclaim_folio_list
   __tracepoint_android_rvh_remove_entity_load_avg
   __tracepoint_android_rvh_rtmutex_prepare_setprio
@@ -2961,6 +2994,7 @@
   __tracepoint_android_rvh_vmscan_kswapd_wake
   __tracepoint_android_trigger_vendor_lmk_kill
   __tracepoint_android_vh_adjust_kvmalloc_flags
+  __tracepoint_android_vh_alter_futex_plist_add
   __tracepoint_android_vh_arch_set_freq_scale
   __tracepoint_android_vh_binder_proc_transaction_finish
   __tracepoint_android_vh_binder_restore_priority
@@ -2972,6 +3006,7 @@
   __tracepoint_android_vh_cpu_idle_enter
   __tracepoint_android_vh_cpu_idle_exit
   __tracepoint_android_vh_do_async_mmap_readahead
+  __tracepoint_android_vh_do_sync_mmap_readahead
   __tracepoint_android_vh_dump_throttled_rt_tasks
   __tracepoint_android_vh_dup_task_struct
   __tracepoint_android_vh_dwc3_core_soft_reset
@@ -2998,6 +3033,7 @@
   __tracepoint_android_vh_prio_inheritance
   __tracepoint_android_vh_prio_restore
   __tracepoint_android_vh_put_task
+  __tracepoint_android_vh_ra_alloc_retry
   __tracepoint_android_vh_resume_end
   __tracepoint_android_vh_rmqueue
   __tracepoint_android_vh_rust_binder_restore_priority
@@ -3054,6 +3090,7 @@
   __tracepoint_sched_util_est_cfs_tp
   __tracepoint_sched_util_est_se_tp
   __tracepoint_sched_wakeup
+  __tracepoint_sk_data_ready
   __tracepoint_softirq_entry
   __tracepoint_softirq_exit
   __tracepoint_suspend_resume
@@ -3275,6 +3312,7 @@
   vb2_streamon
   vb2_vmalloc_memops
   vb2_wait_for_all_buffers
+  vcalloc_noprof
   vendor_data_pad
   verify_pkcs7_signature
   vfree
@@ -3356,6 +3394,7 @@
   ww_mutex_unlock
   x509_load_certificate_list
   __xa_alloc
+  __xa_alloc_cyclic
   __xa_clear_mark
   xa_destroy
   __xa_erase

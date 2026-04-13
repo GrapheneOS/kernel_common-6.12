@@ -166,7 +166,7 @@ dma_addr_t dma_map_page_attrs(struct device *dev, struct page *page,
 
 	if (dma_map_direct(dev, ops) ||
 	    arch_dma_map_page_direct(dev, page_to_phys(page) + offset + size))
-		addr = dma_direct_map_page(dev, page, offset, size, dir, attrs);
+		addr = dma_direct_map_page(dev, page, offset, size, dir, attrs, true);
 	else if (use_dma_iommu(dev))
 		addr = iommu_dma_map_page(dev, page, offset, size, dir, attrs);
 	else
@@ -188,7 +188,7 @@ void dma_unmap_page_attrs(struct device *dev, dma_addr_t addr, size_t size,
 	BUG_ON(!valid_dma_direction(dir));
 	if (dma_map_direct(dev, ops) ||
 	    arch_dma_unmap_page_direct(dev, addr + size))
-		dma_direct_unmap_page(dev, addr, size, dir, attrs);
+		dma_direct_unmap_page(dev, addr, size, dir, attrs, true);
 	else if (use_dma_iommu(dev))
 		iommu_dma_unmap_page(dev, addr, size, dir, attrs);
 	else
@@ -367,7 +367,7 @@ void __dma_sync_single_for_cpu(struct device *dev, dma_addr_t addr, size_t size,
 
 	BUG_ON(!valid_dma_direction(dir));
 	if (dma_map_direct(dev, ops))
-		dma_direct_sync_single_for_cpu(dev, addr, size, dir);
+		dma_direct_sync_single_for_cpu(dev, addr, size, dir, true);
 	else if (use_dma_iommu(dev))
 		iommu_dma_sync_single_for_cpu(dev, addr, size, dir);
 	else if (ops->sync_single_for_cpu)

@@ -136,6 +136,7 @@
   mem_cgroup_update_lru_size
   memory_cgrp_subsys
   memory_cgrp_subsys_enabled_key
+  cgroup_add_dfl_cftypes
   mipi_dsi_generic_write
   mmc_wait_for_cmd
   mnt_drop_write
@@ -644,6 +645,9 @@
   __traceiter_android_vh_filemap_folio_mapped
   __traceiter_android_vh_folio_remove_rmap_ptes
   __traceiter_android_vh_skip_cma
+  __traceiter_android_vh_lock_delay_schedule
+  __traceiter_android_vh_lock_task_fork
+  __traceiter_android_vh_lock_task_exit
   __tracepoint_android_vh_lru_gen_add_folio_skip
   __tracepoint_android_vh_lru_gen_del_folio_skip
   __tracepoint_android_vh_evict_folios_bypass
@@ -661,4 +665,7 @@
   __tracepoint_android_vh_restore_curr_resched
   __tracepoint_android_vh_clear_curr_lazy
   __tracepoint_android_vh_skip_cma
+  __tracepoint_android_vh_lock_delay_schedule
+  __tracepoint_android_vh_lock_task_fork
+  __tracepoint_android_vh_lock_task_exit
   isolate_folio

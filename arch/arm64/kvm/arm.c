@@ -1697,6 +1697,37 @@ static int kvm_arm_vcpu_set_events(struct kvm_vcpu *vcpu,
 	return __kvm_arm_vcpu_set_events(vcpu, events);
 }
 
+static int kvm_pvm_one_reg_allowed(struct kvm_vcpu *vcpu, struct kvm_one_reg *reg)
+{
+	u64 off;
+
+	if (!vcpu_get_flag(vcpu, VCPU_PKVM_FINALIZED))
+		return 0;
+
+	if ((reg->id & KVM_REG_ARM_COPROC_MASK) != KVM_REG_ARM_CORE)
+		return -EPERM;
+
+	/* Only regs[0] to regs[3] matter to HVCs */
+	off = reg->id & ~(KVM_REG_ARCH_MASK | KVM_REG_SIZE_MASK | KVM_REG_ARM_CORE);
+	if (off > KVM_REG_ARM_CORE_REG(regs.regs[3]))
+		return -EPERM;
+
+	/* For protected VMs, SET_ONE_REG|GET_ONE_REG only make sense for forwarded guest HVCs */
+	if (vcpu->run->exit_reason != KVM_EXIT_HYPERCALL)
+		return -EBUSY;
+
+	switch (vcpu->run->hypercall.nr) {
+	/*
+	 * It is expected from the VMM to perform the power cycle, most likely with
+	 * VFIO_DEVICE_FEATURE_LOW_POWER_ENTRY/EXIT
+	 */
+	case ARM_SMCCC_VENDOR_HYP_KVM_DEV_REQ_PWR_FUNC_ID:
+		return 0;
+	}
+
+	return -EBUSY;
+}
+
 long kvm_arch_vcpu_ioctl(struct file *filp,
 			 unsigned int ioctl, unsigned long arg)
 {
@@ -1724,13 +1755,15 @@ long kvm_arch_vcpu_ioctl(struct file *filp,
 		if (unlikely(!kvm_vcpu_initialized(vcpu)))
 			break;
 
-		r = -EPERM;
-		if (unlikely(vcpu_is_protected(vcpu) && vcpu_get_flag(vcpu, VCPU_PKVM_FINALIZED)))
-			break;
-
 		r = -EFAULT;
 		if (copy_from_user(&reg, argp, sizeof(reg)))
 			break;
+
+		if (vcpu_is_protected(vcpu)) {
+			r = kvm_pvm_one_reg_allowed(vcpu, &reg);
+			if (r)
+				break;
+		}
 
 		/*
 		 * We could owe a reset due to PSCI. Handle the pending reset
@@ -2469,6 +2502,7 @@ static void kvm_hyp_init_symbols(void)
 	kvm_nvhe_sym(id_aa64mmfr1_el1_sys_val) = read_sanitised_ftr_reg(SYS_ID_AA64MMFR1_EL1);
 	kvm_nvhe_sym(id_aa64mmfr2_el1_sys_val) = read_sanitised_ftr_reg(SYS_ID_AA64MMFR2_EL1);
 	kvm_nvhe_sym(id_aa64smfr0_el1_sys_val) = read_sanitised_ftr_reg(SYS_ID_AA64SMFR0_EL1);
+	kvm_nvhe_sym(id_aa64dfr0_el1_sys_val) = read_sanitised_ftr_reg(SYS_ID_AA64DFR0_EL1);
 	kvm_nvhe_sym(__icache_flags) = __icache_flags;
 	kvm_nvhe_sym(kvm_arm_vmid_bits) = kvm_arm_vmid_bits;
 	kvm_nvhe_sym(smccc_trng_available) = smccc_trng_available;

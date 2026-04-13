@@ -134,3 +134,15 @@ type 'struct bindings::bindings_raw::files_struct' changed
     type changed from 'u32[8]' to 'u32[6]'
       number of elements changed from 8 to 6
 
+type 'struct rb_thread_layout' changed
+  member 'u64 __kabi_reserved_backport0' was removed
+  member 'union { size_t task; struct { u64 __kabi_reserved_backport0; }; union { }; }' was added
+
+type 'struct pkvm_module_ops' changed
+  member 'u64 __kabi_reserved5' was removed
+  member 'union { int(* device_register_power_lock)(u64, void*, int(*)(void*, bool)); struct { u64 __kabi_reserved5; }; union { }; }' was added
+
+variable symbol changed from 'u64 vendor_data_pad[128]' to 'u64 vendor_data_pad[160]'
+  type changed from 'u64[128]' to 'u64[160]'
+    number of elements changed from 128 to 160
+

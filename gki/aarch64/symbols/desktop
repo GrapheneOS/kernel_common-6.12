@@ -1637,6 +1637,7 @@
   regcache_cache_only
   regcache_mark_dirty
   regcache_sync
+  region_intersects
   __register_chrdev
   register_chrdev_region
   register_die_notifier
@@ -1809,6 +1810,7 @@
   serial8250_resume_port
   serial8250_suspend_port
   serial8250_unregister_port
+  set_direct_map_invalid_noflush
   set_normalized_timespec64
   set_page_dirty_lock
   __SetPageMovable

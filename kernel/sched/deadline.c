@@ -2674,6 +2674,22 @@ static void put_prev_task_dl(struct rq *rq, struct task_struct *p, struct task_s
 	if (task_is_blocked(p))
 		return;
 
+	/*
+	 * With proxy-exec its possible the following call
+	 * chain from update_curr_dl() called above has already
+	 * added us to the pushable list:
+	 * update_curr_dl()
+	 * -> update_curr_dl_se()
+	 *    -> enqueue_task_dl()
+	 *       -> enqueue_pushable_dl_task()
+	 *
+	 * So check if we're already added to make sure we don't
+	 * get added twice
+	 */
+#ifdef CONFIG_SMP
+	if (!RB_EMPTY_NODE(&p->pushable_dl_tasks))
+		return;
+#endif
 	if (on_dl_rq(&p->dl) && p->nr_cpus_allowed > 1)
 		enqueue_pushable_dl_task(rq, p);
 }
@@ -2833,7 +2849,7 @@ static int find_later_rq(struct task_struct *sched_ctx, struct task_struct *exec
 
 static struct task_struct *pick_next_pushable_dl_task(struct rq *rq)
 {
-	struct task_struct *p = NULL;
+	struct task_struct *i, *p = NULL;
 	struct rb_node *next_node;
 
 	if (!has_pushable_dl_tasks(rq))
@@ -2841,15 +2857,17 @@ static struct task_struct *pick_next_pushable_dl_task(struct rq *rq)
 
 	next_node = rb_first_cached(&rq->dl.pushable_dl_tasks_root);
 	while (next_node) {
-		p = __node_2_pdl(next_node);
+		i = __node_2_pdl(next_node);
 		/*
 		 * cpu argument doesn't matter because we treat a -1 result
 		 * (pushable but can't go to cpu0) the same as a 1 result
 		 * (pushable to cpu0). All we care about here is general
 		 * pushability.
 		 */
-		if (task_is_pushable(rq, p, 0))
+		if (task_is_pushable(rq, i, 0)) {
+			p = i;
 			break;
+		}
 
 		next_node = rb_next(next_node);
 	}

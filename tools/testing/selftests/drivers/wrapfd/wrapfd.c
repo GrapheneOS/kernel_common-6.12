@@ -150,7 +150,8 @@ FIXTURE_SETUP(wrapfd_tests)
 		SKIP(return, "Skipping all tests as non-root");
 
 	self->page_size = (size_t)sysconf(_SC_PAGESIZE);
-	self->size = self->page_size * FILE_SZ_PAGES;
+	/* Intentionally make the file size page unaligned */
+	self->size = self->page_size * FILE_SZ_PAGES - self->page_size / 2;
 
 	self->dev_fd = open("/dev/wrapfd", O_RDONLY);
 	ASSERT_TRUE(self->dev_fd >= 0);
@@ -364,7 +365,7 @@ static void test_wrap_remap(struct __test_metadata *_metadata,
 static void test_wrap_fork(struct __test_metadata *_metadata,
 			   FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
-	int wrapfd;
+	int wrapfd, status;
 	char *ptr;
 	pid_t pid;
 
@@ -386,7 +387,9 @@ static void test_wrap_fork(struct __test_metadata *_metadata,
 		ASSERT_EQ(memcmp(self->content, ptr, self->size), 0);
 		exit(EXIT_SUCCESS);
 	} else {
-		wait(NULL);
+		ASSERT_NE(wait(&status), -1);
+		ASSERT_TRUE(WIFEXITED(status));
+		ASSERT_EQ(WEXITSTATUS(status), 0);
 	}
 
 	ASSERT_EQ(munmap(ptr, self->size), 0);

@@ -350,7 +350,7 @@ static inline struct sec_entry *get_sec_entry(struct f2fs_sb_info *sbi,
  *
  * [1] deecd282bc39 "f2fs: add ckpt_valid_blocks to the section entry" in 6.16+
  */
-static struct android_sec_entry *android_sec_entries = NULL;
+extern struct android_sec_entry *android_sec_entries;
 static inline struct android_sec_entry *android_get_sec_entry(
 			struct f2fs_sb_info *sbi, unsigned int segno)
 {

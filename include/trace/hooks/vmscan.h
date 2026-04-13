@@ -140,6 +140,12 @@ DECLARE_HOOK(android_vh_direct_reclaim_end,
 DECLARE_HOOK(android_vh_throttle_direct_reclaim_bypass,
 	TP_PROTO(bool *bypass),
 	TP_ARGS(bypass));
+DECLARE_HOOK(android_vh_folio_skip_activate,
+	TP_PROTO(struct folio *folio, bool *skip),
+	TP_ARGS(folio, skip));
+DECLARE_HOOK(android_vh_folio_trylock_clear_bypass,
+	TP_PROTO(struct folio *folio, bool *bypass),
+	TP_ARGS(folio, bypass));
 DECLARE_HOOK(android_vh_shrink_node,
 	TP_PROTO(pg_data_t *pgdat, struct mem_cgroup *memcg),
 	TP_ARGS(pgdat, memcg));

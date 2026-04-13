@@ -603,10 +603,12 @@ void ufshcd_print_tr(struct ufs_hba *hba, int tag, bool pr_prdt)
 
 	lrbp = &hba->lrb[tag];
 
-	dev_err(hba->dev, "UPIU[%d] - issue time %lld us\n",
-			tag, div_u64(lrbp->issue_time_stamp_local_clock, 1000));
-	dev_err(hba->dev, "UPIU[%d] - complete time %lld us\n",
-			tag, div_u64(lrbp->compl_time_stamp_local_clock, 1000));
+	if (hba->monitor.enabled) {
+		dev_err(hba->dev, "UPIU[%d] - issue time %lld us\n", tag,
+			div_u64(lrbp->issue_time_stamp_local_clock, 1000));
+		dev_err(hba->dev, "UPIU[%d] - complete time %lld us\n", tag,
+			div_u64(lrbp->compl_time_stamp_local_clock, 1000));
+	}
 	dev_err(hba->dev,
 		"UPIU[%d] - Transfer Request Descriptor phys@0x%llx\n",
 		tag, (u64)lrbp->utrd_dma_addr);
@@ -2384,10 +2386,12 @@ void ufshcd_send_command(struct ufs_hba *hba, unsigned int task_tag,
 	struct ufshcd_lrb *lrbp = &hba->lrb[task_tag];
 	unsigned long flags;
 
-	lrbp->issue_time_stamp = ktime_get();
-	lrbp->issue_time_stamp_local_clock = local_clock();
-	lrbp->compl_time_stamp = ktime_set(0, 0);
-	lrbp->compl_time_stamp_local_clock = 0;
+	if (hba->monitor.enabled) {
+		lrbp->issue_time_stamp = ktime_get();
+		lrbp->issue_time_stamp_local_clock = local_clock();
+		lrbp->compl_time_stamp = ktime_set(0, 0);
+		lrbp->compl_time_stamp_local_clock = 0;
+	}
 	trace_android_vh_ufs_send_command(hba, lrbp);
 	ufshcd_add_command_trace(hba, task_tag, UFS_CMD_SEND);
 	if (lrbp->cmd)
@@ -5699,8 +5703,10 @@ void ufshcd_compl_one_cqe(struct ufs_hba *hba, int task_tag,
 	enum utp_ocs ocs;
 
 	lrbp = &hba->lrb[task_tag];
-	lrbp->compl_time_stamp = ktime_get();
-	lrbp->compl_time_stamp_local_clock = local_clock();
+	if (hba->monitor.enabled) {
+		lrbp->compl_time_stamp = ktime_get();
+		lrbp->compl_time_stamp_local_clock = local_clock();
+	}
 	cmd = lrbp->cmd;
 	if (cmd) {
 		trace_android_vh_ufs_compl_command(hba, lrbp);
@@ -5791,6 +5797,48 @@ static int ufshcd_poll(struct Scsi_Host *shost, unsigned int queue_num)
 	return completed_reqs != 0;
 }
 
+static bool ufshcd_mcq_force_compl_one(struct request *rq, void *priv)
+{
+	struct scsi_cmnd *cmd = blk_mq_rq_to_pdu(rq);
+	struct scsi_device *sdev = rq->q->queuedata;
+	struct Scsi_Host *shost = sdev->host;
+	struct ufs_hba *hba = shost_priv(shost);
+	struct ufshcd_lrb *lrbp = &hba->lrb[rq->tag];
+	struct ufs_hw_queue *hwq = ufshcd_mcq_req_to_hwq(hba, rq);
+
+	if (!hwq)
+		return true;
+
+	ufshcd_mcq_compl_all_cqes_lock(hba, hwq);
+
+	/*
+	 * For those cmds of which the cqes are not present in the cq, complete
+	 * them explicitly.
+	 */
+	scoped_guard(spinlock_irqsave, &hwq->cq_lock) {
+		if (!test_bit(SCMD_STATE_COMPLETE, &cmd->state)) {
+			set_host_byte(cmd, DID_REQUEUE);
+			ufshcd_release_scsi_cmd(hba, lrbp);
+			scsi_done(cmd);
+		}
+	}
+
+	return true;
+}
+
+static bool ufshcd_mcq_compl_one(struct request *rq, void *priv)
+{
+	struct scsi_device *sdev = rq->q->queuedata;
+	struct Scsi_Host *shost = sdev->host;
+	struct ufs_hba *hba = shost_priv(shost);
+	struct ufs_hw_queue *hwq = ufshcd_mcq_req_to_hwq(hba, rq);
+
+	if (hwq)
+		ufshcd_mcq_poll_cqe_lock(hba, hwq);
+
+	return true;
+}
+
 /**
  * ufshcd_mcq_compl_pending_transfer - MCQ mode function. It is
  * invoked from the error handler context or ufshcd_host_reset_and_restore()
@@ -5805,40 +5853,10 @@ static int ufshcd_poll(struct Scsi_Host *shost, unsigned int queue_num)
 static void ufshcd_mcq_compl_pending_transfer(struct ufs_hba *hba,
 					      bool force_compl)
 {
-	struct ufs_hw_queue *hwq;
-	struct ufshcd_lrb *lrbp;
-	struct scsi_cmnd *cmd;
-	unsigned long flags;
-	int tag;
-
-	for (tag = 0; tag < hba->nutrs; tag++) {
-		lrbp = &hba->lrb[tag];
-		cmd = lrbp->cmd;
-		if (!ufshcd_cmd_inflight(cmd) ||
-		    test_bit(SCMD_STATE_COMPLETE, &cmd->state))
-			continue;
-
-		hwq = ufshcd_mcq_req_to_hwq(hba, scsi_cmd_to_rq(cmd));
-		if (!hwq)
-			continue;
-
-		if (force_compl) {
-			ufshcd_mcq_compl_all_cqes_lock(hba, hwq);
-			/*
-			 * For those cmds of which the cqes are not present
-			 * in the cq, complete them explicitly.
-			 */
-			spin_lock_irqsave(&hwq->cq_lock, flags);
-			if (cmd && !test_bit(SCMD_STATE_COMPLETE, &cmd->state)) {
-				set_host_byte(cmd, DID_REQUEUE);
-				ufshcd_release_scsi_cmd(hba, lrbp);
-				scsi_done(cmd);
-			}
-			spin_unlock_irqrestore(&hwq->cq_lock, flags);
-		} else {
-			ufshcd_mcq_poll_cqe_lock(hba, hwq);
-		}
-	}
+	blk_mq_tagset_busy_iter(&hba->host->tag_set,
+				force_compl ? ufshcd_mcq_force_compl_one :
+					      ufshcd_mcq_compl_one,
+				NULL);
 }
 
 /**
@@ -10751,6 +10769,9 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	 */
 	spin_lock_init(&hba->clk_gating.lock);
 
+	/* Initialize mutex for PM QoS request synchronization */
+	mutex_init(&to_hba_priv(hba)->pm_qos_mutex);
+
 	/*
 	 * Set the default power management level for runtime and system PM.
 	 * Host controller drivers can override them in their
@@ -10836,9 +10857,6 @@ int ufshcd_init(struct ufs_hba *hba, void __iomem *mmio_base, unsigned int irq)
 	mutex_init(&hba->ee_ctrl_mutex);
 
 	mutex_init(&hba->wb_mutex);
-
-	/* Initialize mutex for PM QoS request synchronization */
-	mutex_init(&to_hba_priv(hba)->pm_qos_mutex);
 
 	init_rwsem(&hba->clk_scaling_lock);
 
