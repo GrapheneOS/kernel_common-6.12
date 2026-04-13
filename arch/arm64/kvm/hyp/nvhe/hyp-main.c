@@ -818,9 +818,7 @@ static void flush_hyp_vcpu(struct pkvm_hyp_vcpu *hyp_vcpu)
 		if (host_iflags & unpack_vcpu_flag(PKVM_HOST_STATE_DIRTY))
 			__flush_hyp_vcpu(hyp_vcpu);
 
-		hyp_vcpu->vcpu.arch.iflags = (host_iflags & PKVM_ALLOWED_HOST_IFLAGS) |
-			(hyp_vcpu->vcpu.arch.iflags & ~PKVM_ALLOWED_HOST_IFLAGS);
-
+		hyp_vcpu->vcpu.arch.iflags = host_iflags;
 		flush_debug_state(hyp_vcpu);
 
 		hyp_vcpu->vcpu.arch.hcr_el2 &= ~(HCR_TWI | HCR_TWE);

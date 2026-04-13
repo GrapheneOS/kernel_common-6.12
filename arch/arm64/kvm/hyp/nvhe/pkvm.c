@@ -711,17 +711,6 @@ static int pkvm_vcpu_init_sysregs(struct pkvm_hyp_vcpu *hyp_vcpu)
 	return ret;
 }
 
-static void pkvm_vcpu_init_debug_state(struct pkvm_hyp_vcpu *hyp_vcpu)
-{
-	struct kvm_vcpu *vcpu = &hyp_vcpu->vcpu;
-
-	if (FIELD_GET(ID_AA64DFR0_EL1_PMSVer, id_aa64dfr0_el1_sys_val))
-		vcpu_set_flag(vcpu, DEBUG_STATE_SAVE_SPE);
-
-	if (FIELD_GET(ID_AA64DFR0_EL1_TraceBuffer, id_aa64dfr0_el1_sys_val))
-		vcpu_set_flag(vcpu, DEBUG_STATE_SAVE_TRBE);
-}
-
 static int init_pkvm_hyp_vcpu(struct pkvm_hyp_vcpu *hyp_vcpu,
 			      struct pkvm_hyp_vm *hyp_vm,
 			      struct kvm_vcpu *host_vcpu)
@@ -778,8 +767,6 @@ static int init_pkvm_hyp_vcpu(struct pkvm_hyp_vcpu *hyp_vcpu,
 	ret = pkvm_vcpu_init_psci(hyp_vcpu, mp_state);
 	if (ret)
 		goto done;
-
-	pkvm_vcpu_init_debug_state(hyp_vcpu);
 done:
 	if (ret)
 		unpin_host_vcpu(hyp_vcpu);
