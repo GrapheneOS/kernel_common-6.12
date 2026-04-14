@@ -303,14 +303,14 @@ static void arch_dup_tlbbatch_mask(struct task_struct *dst)
 	 * in sme_dvmsync_add_pending() if CPUMASK_OFFSTACK=y.
 	 */
 	if (alternative_has_cap_unlikely(ARM64_WORKAROUND_4193714))
-		memset(&dst->tlb_ubc.arch.cpumask, 0,
-		       sizeof(dst->tlb_ubc.arch.cpumask));
+		memset(&dst->cpumask_sme_dvmsync, 0,
+		       sizeof(dst->cpumask_sme_dvmsync));
 }
 
 static void arch_release_tlbbatch_mask(struct task_struct *tsk)
 {
 	if (alternative_has_cap_unlikely(ARM64_WORKAROUND_4193714))
-		free_cpumask_var(tsk->tlb_ubc.arch.cpumask);
+		free_cpumask_var(tsk->cpumask_sme_dvmsync);
 }
 
 #else

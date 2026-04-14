@@ -1636,7 +1636,16 @@ struct task_struct {
 	struct callback_head		l1d_flush_kill;
 #endif
 	ANDROID_KABI_USE(1, struct task_dma_buf_info *dmabuf_info);
+#ifdef CONFIG_ARM64_ERRATUM_4193714
+	/*
+	 * Track CPUs that need SME DVMSync on completion of this batch.
+	 * Otherwise, the arm64 HW can do tlb shootdown, so we don't need to
+	 * record cpumask for sending IPI
+	 */
+	ANDROID_KABI_USE(2, cpumask_var_t cpumask_sme_dvmsync);
+#else
 	ANDROID_KABI_RESERVE(2);
+#endif
 	ANDROID_KABI_RESERVE(3);
 	ANDROID_KABI_RESERVE(4);
 	ANDROID_KABI_RESERVE(5);
