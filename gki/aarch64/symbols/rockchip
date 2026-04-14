@@ -2822,6 +2822,7 @@
   snd_soc_dapm_new_widgets
 
 # required by snd-soc-rockchip-i2s-tdm.ko
+  gpio_device_find_by_fwnode
   regcache_sync_region
 
 # required by snd-soc-rockchip-multicodecs.ko
