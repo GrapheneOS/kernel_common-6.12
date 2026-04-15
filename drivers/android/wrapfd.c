@@ -1019,7 +1019,7 @@ static void wrap_show_fdinfo(struct seq_file *m, struct file *file)
 
 bool is_wrapfd_vma(struct vm_area_struct *vma)
 {
-	return (vma && (vma->vm_ops->open == wrap_vm_open));
+	return vma && vma->vm_ops && (vma->vm_ops->open == wrap_vm_open);
 }
 
 int wrapfd_get_mappable(struct file *file, struct device *dev,
