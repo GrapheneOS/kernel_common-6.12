@@ -1657,7 +1657,7 @@ static int smmu_dev_block_dma(struct kvm_hyp_iommu *iommu, u32 sid, bool is_host
 							    STRTAB_STE_0_S1CTXPTR_MASK);
 				nr_entries = 1 << FIELD_GET(STRTAB_STE_0_S1CDMAX,
 							    le64_to_cpu(dst->data[0]));
-				cd_sz = (1 << nr_entries) * (CTXDESC_CD_DWORDS << 3);
+				cd_sz = nr_entries * (CTXDESC_CD_DWORDS << 3);
 			}
 			/* zap zippity zop. */
 			for (i = 0; i < STRTAB_STE_DWORDS; i++)
