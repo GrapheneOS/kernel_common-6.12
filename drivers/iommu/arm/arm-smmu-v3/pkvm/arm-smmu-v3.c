@@ -1548,6 +1548,14 @@ static size_t smmu_unmap_pages(struct kvm_hyp_iommu_domain *domain, unsigned lon
 		total_unmapped += unmapped;
 		pgcount -= unmapped / pgsize;
 	}
+
+	/*
+	 * Eagerly drain the gather list before the core code does to Keep
+	 * the page table walk locked.
+	 */
+	smmu_iotlb_sync(domain, gather);
+	gather->pgsize = 0;
+	iommu_iotlb_gather_init(gather);
 	hyp_spin_unlock(&smmu_domain->pgt_lock);
 	return total_unmapped;
 }
