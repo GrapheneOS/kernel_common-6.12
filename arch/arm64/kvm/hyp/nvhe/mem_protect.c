@@ -2577,6 +2577,9 @@ int __pkvm_host_reclaim_page(struct pkvm_hyp_vm *vm, u64 pfn, u64 ipa, u8 order)
 	if (check_shl_overflow(PAGE_SIZE, order, &page_size))
 		return -EINVAL;
 
+	if (!pkvm_hyp_vm_is_protected(vm))
+		return -EPERM;
+
 	host_lock_component();
 	guest_lock_component(vm);
 
@@ -2596,10 +2599,6 @@ int __pkvm_host_reclaim_page(struct pkvm_hyp_vm *vm, u64 pfn, u64 ipa, u8 order)
 		/* No vCPUs of the guest can run, doing this prior to stage-2 unmap is OK */
 		hyp_poison_page(phys, page_size);
 		psci_mem_protect_dec(1 << order);
-		break;
-	case PKVM_PAGE_SHARED_BORROWED:
-	case PKVM_PAGE_SHARED_BORROWED | PKVM_PAGE_RESTRICTED_PROT:
-		WARN_ON(__host_check_page_state_range(phys, page_size, PKVM_PAGE_SHARED_OWNED));
 		break;
 	case PKVM_PAGE_SHARED_OWNED:
 		if (__host_check_page_state_range(phys, page_size, PKVM_PAGE_SHARED_BORROWED)) {
