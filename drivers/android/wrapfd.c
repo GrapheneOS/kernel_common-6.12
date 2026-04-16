@@ -305,9 +305,6 @@ struct wrap_ctx_mapping {
 	struct vm_operations_struct vm_ops;
 };
 
-#define MODIFICATIONS_BLOCKED	BIT(0)
-#define USAGE_BLOCKED		BIT(1)
-
 struct wrap_ctx {
 	struct wrap_content *content;
 	spinlock_t lock; /* protects all fields below */
@@ -315,11 +312,7 @@ struct wrap_ctx {
 	bool allow_guests;
 	unsigned long map_count;
 	unsigned long use_count;
-	/*
-	 * Mask of blocked operations when lock is not held due to possiblity
-	 * of sleep during the ongoing operation.
-	 */
-	unsigned int block_mask;
+	bool unusable;
 };
 
 static struct wrap_ctx *create_wrap_ctx(void)
@@ -390,6 +383,23 @@ static inline int publish_wrap(struct wrap_ctx *ctx,
 	return ret;
 }
 
+static bool context_use(struct wrap_ctx *ctx)
+{
+	assert_spin_locked(&ctx->lock);
+	if (ctx->unusable)
+		return false;
+	ctx->use_count++;
+	return true;
+}
+
+static void context_unuse(struct wrap_ctx *ctx)
+{
+	assert_spin_locked(&ctx->lock);
+	if (WARN_ON(ctx->unusable))
+		return;
+	ctx->use_count--;
+}
+
 static int can_modify(struct wrap_ctx *ctx, struct task_struct *task,
 		      bool check_content)
 {
@@ -406,21 +416,11 @@ static int can_modify(struct wrap_ctx *ctx, struct task_struct *task,
 	return 0;
 }
 
-static bool can_use(struct wrap_ctx *ctx)
-{
-	assert_spin_locked(&ctx->lock);
-	return (ctx->block_mask & USAGE_BLOCKED) == 0;
-}
-
-static int block_operations(struct wrap_ctx *ctx, unsigned int mask)
+static int block_usage(struct wrap_ctx *ctx)
 {
 	int ret;
 
 	assert_spin_locked(&ctx->lock);
-	/* Any request should at least block modifications. */
-	if (WARN_ON((mask & MODIFICATIONS_BLOCKED) == 0))
-		return -EINVAL;
-
 	ret = can_modify(ctx, current, true);
 	if (ret)
 		return ret;
@@ -428,23 +428,23 @@ static int block_operations(struct wrap_ctx *ctx, unsigned int mask)
 	/*
 	 * The task is the owner, the content can't be modified by other
 	 * processes but racing threads of the owner process can still
-	 * modify it. Use block_mask bitmask to prevent that.
+	 * modify it. Use unusable to prevent that.
 	 */
-	if (ctx->block_mask & mask)
+	if (ctx->unusable)
 		return -EAGAIN;
 
-	ctx->block_mask |= mask;
+	ctx->unusable = true;
 
 	return 0;
 }
 
-static void unblock_operations(struct wrap_ctx *ctx)
+static void unblock_usage(struct wrap_ctx *ctx)
 {
 	assert_spin_locked(&ctx->lock);
-	if (WARN_ON(!ctx->block_mask))
+	if (WARN_ON(!ctx->unusable))
 		return;
 
-	ctx->block_mask = 0;
+	ctx->unusable = false;
 }
 
 static void wrap_vm_open(struct vm_area_struct *vma)
@@ -506,7 +506,7 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 	 * If usage is blocked, the content is being rewrapped or emptied.
 	 * Treat this as if the wrap is already empty.
 	 */
-	if (!can_use(ctx)) {
+	if (!context_use(ctx)) {
 		ret = -ENOENT;
 		goto unlock;
 	}
@@ -514,7 +514,7 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 	content = ctx->content;
 	if (!content) {
 		ret = -ENOENT;
-		goto unlock;
+		goto put_ctx;
 	}
 
 	/* Handle read-only content */
@@ -522,7 +522,7 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 	    !content->ops->is_writable(content)) {
 		if (vma->vm_flags & VM_WRITE) {
 			ret = -EACCES;
-			goto unlock;
+			goto put_ctx;
 		}
 		make_rdonly = !!(vma->vm_flags & VM_MAYWRITE);
 	}
@@ -531,7 +531,7 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 		ret = content->ops->mmap_prepare(content, vma);
 		if (ret) {
 			ret = -EINVAL;
-			goto unlock;
+			goto put_ctx;
 		}
 	}
 	/*
@@ -540,6 +540,8 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 	 * Content is stable.
 	 */
 	ctx->map_count++;
+put_ctx:
+	context_unuse(ctx);
 unlock:
 	spin_unlock(&ctx->lock);
 
@@ -629,11 +631,12 @@ static int get_wrap_state(struct wrap_ctx *ctx,
 	 * If usage is blocked, the content is being rewrapped or emptied.
 	 * Treat this as if the wrap is already empty.
 	 */
-	if (ctx->content && can_use(ctx)) {
+	if (ctx->content && context_use(ctx)) {
 		if (ctx->content->ops->is_writable(ctx->content))
 			wrapfd_get_state.state = WRAPFD_CONTENT_RDWR;
 		else
 			wrapfd_get_state.state = WRAPFD_CONTENT_RDONLY;
+		context_unuse(ctx);
 	} else {
 		wrapfd_get_state.state = WRAPFD_CONTENT_EMPTY;
 	}
@@ -761,7 +764,7 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 	}
 
 	spin_lock(&ctx->lock);
-	ret = block_operations(ctx, MODIFICATIONS_BLOCKED);
+	ret = context_use(ctx) ? 0 : -ENOENT;
 	spin_unlock(&ctx->lock);
 
 	if (ret)
@@ -770,7 +773,7 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 	ret = ctx->content->ops->load(ctx->content, file,
 				      file_offs, buf_offs, len);
 	spin_lock(&ctx->lock);
-	unblock_operations(ctx);
+	context_unuse(ctx);
 	spin_unlock(&ctx->lock);
 put_file:
 	fput(file);
@@ -798,8 +801,7 @@ static int wrap_file_rewrap(struct wrap_ctx *ctx,
 		return -EINVAL;
 
 	spin_lock(&ctx->lock);
-	ret = block_operations(ctx,
-			       MODIFICATIONS_BLOCKED | USAGE_BLOCKED);
+	ret = block_usage(ctx);
 	if (!ret) {
 		content = ctx->content;
 		ctx->content = NULL;
@@ -831,7 +833,7 @@ static int wrap_file_rewrap(struct wrap_ctx *ctx,
 		content->ops->free(content);
 
 	spin_lock(&ctx->lock);
-	unblock_operations(ctx);
+	unblock_usage(ctx);
 	spin_unlock(&ctx->lock);
 
 	return ret;
@@ -848,7 +850,7 @@ restore_content:
 	 */
 	spin_lock(&ctx->lock);
 	ctx->content = content;
-	unblock_operations(ctx);
+	unblock_usage(ctx);
 	spin_unlock(&ctx->lock);
 out:
 	return ret;
@@ -861,14 +863,13 @@ static int wrap_file_empty(struct wrap_ctx *ctx)
 
 	spin_lock(&ctx->lock);
 
-	ret = block_operations(ctx,
-			       MODIFICATIONS_BLOCKED | USAGE_BLOCKED);
+	ret = block_usage(ctx);
 	if (ret)
 		goto unlock;
 
 	content = ctx->content;
 	ctx->content = NULL;
-	unblock_operations(ctx);
+	unblock_usage(ctx);
 unlock:
 	spin_unlock(&ctx->lock);
 
@@ -911,27 +912,22 @@ static int wrap_file_ioctl(struct wrap_ctx *ctx,
 	 * If usage is blocked, the content is being rewrapped or emptied.
 	 * Treat this as if the wrap is already empty.
 	 */
-	if (!can_use(ctx)) {
+	if (!context_use(ctx)) {
 		ret = -ENOENT;
 		goto unlock;
 	}
 
 	if (!ctx->content) {
+		context_unuse(ctx);
 		ret = -ENOENT;
 		goto unlock;
 	}
 
 	if (!ctx->content->ops->ioctl) {
+		context_unuse(ctx);
 		ret = -ENOIOCTLCMD;
 		goto unlock;
 	}
-
-	/*
-	 * Increased use_count prevents changes in the
-	 * ownership, rewrapping or emptying the content.
-	 * Content is stable.
-	 */
-	ctx->use_count++;
 unlock:
 	spin_unlock(&ctx->lock);
 
@@ -941,7 +937,7 @@ unlock:
 	ret = ctx->content->ops->ioctl(ctx->content, cmd, arg);
 
 	spin_lock(&ctx->lock);
-	ctx->use_count--;
+	context_unuse(ctx);
 	spin_unlock(&ctx->lock);
 
 	return ret;
