@@ -719,6 +719,9 @@ enum ufshcd_android_quirks {
 
 	/* Initiate Cleanup (ICU) is not supported */
 	UFSHCD_ANDROID_QUIRK_MCQ_BROKEN_ICU		= 1 << 2,
+
+	/* AH8 being enabled may break DME */
+	UFSHCD_ANDROID_QUIRK_AH8_BREAKS_DME             = 1 << 31,
 };
 
 enum ufshcd_caps {
