@@ -132,6 +132,7 @@
   __traceiter_android_vh_cpuset_attach_task
   __traceiter_android_vh_cpuset_css_online
   __traceiter_android_vh_check_nanosleep_syscall
+  __traceiter_android_vh_check_swap_entry_range_free
   __traceiter_android_vh_do_send_sig_info
   __traceiter_android_vh_clear_rwsem_reader_owned
   __traceiter_android_vh_clear_rwsem_writer_owned
@@ -150,8 +151,10 @@
   __traceiter_android_vh_filemap_fault_post_folio_locked
   __traceiter_android_vh_filemap_read_end
   __traceiter_android_vh_filemap_update_page
+  __traceiter_android_vh_folio_alloc_swap_bypass
   __traceiter_android_vh_folio_expected_ref_count
   __traceiter_android_vh_force_page_cache_ra
+  __traceiter_android_vh_free_swap_slot_bypass
   __traceiter_android_vh_free_task
   __traceiter_android_vh_fuse_request_end
   __traceiter_android_vh_fuse_request_send
@@ -191,6 +194,7 @@
   __traceiter_android_vh_oom_swapmem_gather_finish
   __traceiter_android_vh_oom_swapmem_gather_init
   __traceiter_android_vh_page_cache_ra_mark
+  __traceiter_android_vh_pick_swap_device_bypass
   __traceiter_android_vh_record_rwsem_reader_owned
   __traceiter_android_vh_record_rwsem_writer_owned
   __traceiter_android_vh_rwsem_init
@@ -281,6 +285,7 @@
   __tracepoint_android_vh_cpuset_attach_task
   __tracepoint_android_vh_cpuset_css_online
   __tracepoint_android_vh_check_nanosleep_syscall
+  __tracepoint_android_vh_check_swap_entry_range_free
   __tracepoint_android_vh_do_send_sig_info
   __tracepoint_android_vh_clear_rwsem_reader_owned
   __tracepoint_android_vh_clear_rwsem_writer_owned
@@ -299,8 +304,10 @@
   __tracepoint_android_vh_filemap_fault_post_folio_locked
   __tracepoint_android_vh_filemap_read_end
   __tracepoint_android_vh_filemap_update_page
+  __tracepoint_android_vh_folio_alloc_swap_bypass
   __tracepoint_android_vh_folio_expected_ref_count
   __tracepoint_android_vh_force_page_cache_ra
+  __tracepoint_android_vh_free_swap_slot_bypass
   __tracepoint_android_vh_free_task
   __tracepoint_android_vh_fuse_request_end
   __tracepoint_android_vh_fuse_request_send
@@ -340,6 +347,7 @@
   __tracepoint_android_vh_oom_swapmem_gather_finish
   __tracepoint_android_vh_oom_swapmem_gather_init
   __tracepoint_android_vh_page_cache_ra_mark
+  __tracepoint_android_vh_pick_swap_device_bypass
   __tracepoint_android_vh_record_rwsem_reader_owned
   __tracepoint_android_vh_record_rwsem_writer_owned
   __tracepoint_android_vh_rwsem_init
