@@ -51,6 +51,7 @@ config GKI_HIDDEN_SND_CONFIGS
 	select SND_JACK
 	select SND_JACK_INPUT_DEV
 	select SND_INTEL_NHLT if (ACPI)
+	imply SND_HDA
 	help
 	  Dummy config option used to enable hidden SND configs.
 	  These are normally selected implicitly when a module
