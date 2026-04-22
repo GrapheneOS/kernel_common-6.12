@@ -262,11 +262,58 @@ static void test_wrap(struct __test_metadata *_metadata,
 	close(wrapfd);
 }
 
+static const void *memchr_inv(const void *start, int c, size_t bytes)
+{
+	const char *src = start;
+	char val = c;
+	int i;
+
+	for (i = 0; i < bytes; i++)
+		if (src[i] != val)
+			return &src[i];
+
+	return NULL;
+}
+
+static int poison_region(int wrapfd, void *start, int poison, size_t bytes)
+{
+	int ret = dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_WRITE);
+
+	if (ret)
+		return ret;
+
+	memset(start, poison, bytes);
+
+	return dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_WRITE);
+}
+
+static int verify_region_poison(int wrapfd, void *start, int poison, size_t bytes)
+{
+	int ret = dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_READ);
+	bool poisoned;
+
+	if (ret)
+		return ret;
+
+	poisoned = memchr_inv(start, poison, bytes) == NULL;
+
+	ret = dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_READ);
+	if (ret)
+		return ret;
+
+	return poisoned ? 0 : -1;
+}
+
 static int load_and_cmp(struct __test_metadata *_metadata, FIXTURE_DATA(wrapfd_tests) *self,
 			int wrapfd, unsigned long file_offs, unsigned long buf_offs,
 			unsigned long len)
 {
+	const char poison = 0xaa;
 	int ret;
+	char *head_ptr = NULL;
+	unsigned long tail_len, tail_aligned_offset, tail_map_len;
+	char *tail_page_ptr = NULL;
+	char *tail_ptr = NULL;
 
 	clear_content(_metadata, self, wrapfd);
 
@@ -274,13 +321,58 @@ static int load_and_cmp(struct __test_metadata *_metadata, FIXTURE_DATA(wrapfd_t
 	EXPECT_NE(ret, 0)
 		return ret;
 
+	if (buf_offs) {
+		head_ptr = mmap(NULL, buf_offs, PROT_READ | PROT_WRITE, MAP_SHARED, wrapfd, 0);
+		EXPECT_NE(head_ptr, MAP_FAILED)
+			return -1;
+
+		ret = poison_region(wrapfd, head_ptr, poison, buf_offs);
+		EXPECT_EQ(ret, 0)
+			goto out_unmap_head;
+	}
+
+	if ((buf_offs + len) < self->size) {
+		tail_len = self->size - buf_offs - len;
+		tail_aligned_offset = ALIGN_DOWN(buf_offs + len, self->page_size);
+		tail_map_len = self->size - tail_aligned_offset;
+		tail_page_ptr = mmap(NULL, tail_map_len, PROT_READ | PROT_WRITE, MAP_SHARED, wrapfd,
+				     tail_aligned_offset);
+		EXPECT_NE(tail_page_ptr, MAP_FAILED) {
+			ret = -1;
+			goto out_unmap_head;
+		}
+
+		tail_ptr = tail_page_ptr + offset_in_page(buf_offs + len, self->page_size);
+		ret = poison_region(wrapfd, tail_ptr, poison, tail_len);
+		EXPECT_EQ(ret, 0)
+			goto out_unmap_tail;
+	}
+
 	ret = wrapfd_load(wrapfd, self->fd, file_offs, buf_offs, len);
 	EXPECT_EQ(ret, 0)
-		return ret;
+		goto out_unmap_tail;
+
+	if (head_ptr) {
+		ret = verify_region_poison(wrapfd, head_ptr, poison, buf_offs);
+		EXPECT_EQ(ret, 0)
+			goto out_unmap_tail;
+	}
 
 	ret = cmp_content(_metadata, self, wrapfd, file_offs, buf_offs, len);
-	EXPECT_EQ(ret, 0);
+	EXPECT_EQ(ret, 0)
+		goto out_unmap_tail;
 
+	if (tail_ptr) {
+		ret = verify_region_poison(wrapfd, tail_ptr, poison, tail_len);
+		EXPECT_EQ(ret, 0);
+	}
+
+out_unmap_tail:
+	if (tail_page_ptr)
+		EXPECT_EQ(munmap(tail_page_ptr, tail_map_len), 0);
+out_unmap_head:
+	if (head_ptr)
+		EXPECT_EQ(munmap(head_ptr, buf_offs), 0);
 	return ret;
 }
 
@@ -288,6 +380,11 @@ static int __test_loads(struct __test_metadata *_metadata,
 			FIXTURE_DATA(wrapfd_tests) *self, int wrapfd)
 {
 	int ret;
+
+	/* Test a sub-page load and ensure only the requested part was written to. */
+	ret = load_and_cmp(_metadata, self, wrapfd, 0, 0, self->page_size / 2);
+	EXPECT_EQ(ret, 0)
+		return ret;
 
 	ret = load_and_cmp(_metadata, self, wrapfd, self->page_size, self->page_size,
 			   self->size - self->page_size);

@@ -99,27 +99,41 @@ static int dmabuf_content_load(struct wrap_content *content, struct file *file,
 			       loff_t file_offs, loff_t buf_offs, loff_t len)
 {
 	struct wrap_content_dmabuf *dmabuf_content;
+	void *bounce_page = NULL;
 	struct iosys_map map;
 	struct iov_iter iter;
 	struct kiocb kiocb;
-	loff_t bytes_read;
-	struct kvec iov;
+	size_t bounce_len = 0;
+	struct kvec iov[2] = {};
 	loff_t end;
-	int ret;
+	int ret, nr_segs = 1;
 
 	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
 				      content);
 
-	if (check_add_overflow(buf_offs, PAGE_ALIGN(len), &end))
+	/* We will only write into buf_offs + len, so no need to page-align the length here. */
+	if (check_add_overflow(buf_offs, len, &end))
 		return -EINVAL;
 
 	if (end > dmabuf_content->dmabuf->size)
 		return -EINVAL;
 
+	/*
+	 * If the end is not page-aligned, then the read into the last page of the range will
+	 * overwrite any data past the range. Allocate a bounce page for the last page, and handle
+	 * that separately.
+	 */
+	if (!PAGE_ALIGNED(end)) {
+		bounce_page = (void *)__get_free_page(GFP_KERNEL);
+		if (!bounce_page)
+			return -ENOMEM;
+		bounce_len = offset_in_page(end);
+	}
+
 	ret = dma_buf_begin_cpu_access(dmabuf_content->dmabuf,
 				       DMA_BIDIRECTIONAL);
 	if (ret)
-		return ret;
+		goto err_free_page;
 
 	ret = dma_buf_vmap(dmabuf_content->dmabuf, &map);
 	if (ret)
@@ -130,39 +144,59 @@ static int dmabuf_content_load(struct wrap_content *content, struct file *file,
 		goto err_unmap;
 	}
 
-	iov.iov_base = (u8 *)map.vaddr + buf_offs;
+	iov[0].iov_base = (u8 *)map.vaddr + buf_offs;
+	iov[0].iov_len = PAGE_ALIGN_DOWN(len);
+	/*
+	 * Read the last page of the extent from the file into the bounce page so we can copy just
+	 * what we need later.
+	 */
+	if (bounce_len) {
+		iov[1].iov_base = bounce_page;
+		iov[1].iov_len = PAGE_SIZE;
+		nr_segs++;
+	}
+
 	init_sync_kiocb(&kiocb, file);
 	kiocb.ki_pos = file_offs;
 	kiocb.ki_flags |= IOCB_DIRECT;
+	iov_iter_kvec(&iter, ITER_DEST, iov, nr_segs, PAGE_ALIGN(len));
 
 	while (len > 0) {
 		loff_t count = min_t(loff_t, MAX_RW_COUNT, PAGE_ALIGN(len));
 
-		iov.iov_len = count;
-		iov_iter_kvec(&iter, ITER_DEST, &iov, 1, iov.iov_len);
-		bytes_read = 0;
-		while (len > 0 && bytes_read < count) {
+		iter.count = count;
+		while (len > 0 && iov_iter_count(&iter)) {
 			ssize_t sz = vfs_iocb_iter_read(file, &kiocb, &iter);
 
 			if (sz <= 0) {
 				ret = sz;
 				goto err_unmap;
 			}
-			bytes_read += sz;
 			len -= sz;
+			iov_iter_advance(&iter, sz);
 		}
-		iov.iov_base += count;
 	}
+
+	/* Copy just what we need from the bounce buffer. */
+	if (!ret && bounce_len)
+		memcpy(PTR_ALIGN_DOWN(map.vaddr + end, PAGE_SIZE), bounce_page, bounce_len);
+
 err_unmap:
 	dma_buf_vunmap(dmabuf_content->dmabuf, &map);
 err_end_access:
 	dma_buf_end_cpu_access(dmabuf_content->dmabuf, DMA_BIDIRECTIONAL);
+err_free_page:
+	free_page((unsigned long)bounce_page);
 
 	if (ret < 0)
 		return ret;
 
-	if (len)
-		return -EINVAL; /* File was too short / early EOF */
+	/*
+	 * File was too short / early EOF. Test explicitly for a positive value, as len can be
+	 * negative in cases where the page-aligned size of the final read is larger than len.
+	 */
+	if (len > 0)
+		return -EINVAL;
 
 	return 0;
 }
