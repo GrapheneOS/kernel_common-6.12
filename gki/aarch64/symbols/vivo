@@ -104,6 +104,7 @@
   __traceiter_android_rvh_inet_sock_create
   __traceiter_android_rvh_inet_sock_release
   __traceiter_android_rvh_kswapd_shrink_node_bypass
+  __traceiter_android_rvh_mglru_shrink_spec_lru
   __traceiter_android_rvh_replace_next_task_fair
   __traceiter_android_rvh_set_user_nice
   __traceiter_android_rvh_set_gfp_zone_flags
@@ -261,6 +262,7 @@
   __tracepoint_android_rvh_inet_sock_create
   __tracepoint_android_rvh_inet_sock_release
   __tracepoint_android_rvh_kswapd_shrink_node_bypass
+  __tracepoint_android_rvh_mglru_shrink_spec_lru
   __tracepoint_android_rvh_pr_set_vma_name_bypass
   __tracepoint_android_rvh_replace_next_task_fair
   __tracepoint_android_rvh_set_user_nice
