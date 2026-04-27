@@ -759,3 +759,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_check_swap_entry_range_free);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_free_swap_slot_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_folio_alloc_swap_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_pick_swap_device_bypass);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_folio_end_writeback);
