@@ -57,18 +57,17 @@ static void __debug_restore_spe(u64 pmscr_el1, u64 pmblimitr_el1)
 
 static void __debug_save_trace(u64 *trfcr_el1, u64 *trblimitr_el1)
 {
-	*trblimitr_el1 = read_sysreg_s(SYS_TRBLIMITR_EL1);
+	/*
+	 * Prohibit trace generation while we are in guest.
+	 * Since access to TRFCR_EL1 is trapped, the guest can't
+	 * modify the filtering set by the host.
+	 */
+	*trfcr_el1 = read_sysreg_el1(SYS_TRFCR);
+	write_sysreg_el1(0, SYS_TRFCR);
 
 	/* Check if the TRBE is enabled */
+	*trblimitr_el1 = read_sysreg_s(SYS_TRBLIMITR_EL1);
 	if (*trblimitr_el1 & TRBLIMITR_EL1_E) {
-		/*
-		 * Prohibit trace generation while we are in guest.
-		 * Since access to TRFCR_EL1 is trapped, the guest can't
-		 * modify the filtering set by the host.
-		 */
-		*trfcr_el1 = read_sysreg_el1(SYS_TRFCR);
-		write_sysreg_el1(0, SYS_TRFCR);
-
 		/*
 		 * The host has enabled the Trace Buffer Unit so we have
 		 * to beat the CPU with a stick until it stops accessing
@@ -126,12 +125,26 @@ static void __debug_restore_trace(u64 trfcr_el1, u64 trblimitr_el1)
 
 void __debug_save_host_buffers_nvhe(struct kvm_vcpu *vcpu)
 {
+	bool save_spe, save_trbe;
+
+	if (is_protected_kvm_enabled()) {
+		u64 dfr0 = read_sysreg(id_aa64dfr0_el1);
+
+		save_spe = FIELD_GET(ID_AA64DFR0_EL1_PMSVer, dfr0) &&
+			   !(read_sysreg_s(SYS_PMBIDR_EL1) & PMBIDR_EL1_P);
+		save_trbe = FIELD_GET(ID_AA64DFR0_EL1_TraceBuffer, dfr0) &&
+			    !(read_sysreg_s(SYS_TRBIDR_EL1) & TRBIDR_EL1_P);
+	} else {
+		save_spe = vcpu_get_flag(vcpu, DEBUG_STATE_SAVE_SPE);
+		save_trbe = vcpu_get_flag(vcpu, DEBUG_STATE_SAVE_TRBE);
+	}
+
 	/* Disable and flush SPE data generation */
-	if (vcpu_get_flag(vcpu, DEBUG_STATE_SAVE_SPE))
+	if (save_spe)
 		__debug_save_spe(host_data_ptr(host_debug_state.pmscr_el1),
 				 host_data_ptr(host_debug_state.pmblimitr_el1));
 	/* Disable and flush Self-Hosted Trace generation */
-	if (vcpu_get_flag(vcpu, DEBUG_STATE_SAVE_TRBE))
+	if (save_trbe)
 		__debug_save_trace(host_data_ptr(host_debug_state.trfcr_el1),
 				   host_data_ptr(host_debug_state.trblimitr_el1));
 }
@@ -143,11 +156,25 @@ void __debug_switch_to_guest(struct kvm_vcpu *vcpu)
 
 void __debug_restore_host_buffers_nvhe(struct kvm_vcpu *vcpu)
 {
-	if (vcpu_get_flag(vcpu, DEBUG_STATE_SAVE_SPE))
+	bool restore_spe, restore_trbe;
+
+	if (is_protected_kvm_enabled()) {
+		u64 dfr0 = read_sysreg(id_aa64dfr0_el1);
+
+		restore_spe = FIELD_GET(ID_AA64DFR0_EL1_PMSVer, dfr0) &&
+			      !(read_sysreg_s(SYS_PMBIDR_EL1) & PMBIDR_EL1_P);
+		restore_trbe = FIELD_GET(ID_AA64DFR0_EL1_TraceBuffer, dfr0) &&
+			       !(read_sysreg_s(SYS_TRBIDR_EL1) & TRBIDR_EL1_P);
+	} else {
+		restore_spe = vcpu_get_flag(vcpu, DEBUG_STATE_SAVE_SPE);
+		restore_trbe = vcpu_get_flag(vcpu, DEBUG_STATE_SAVE_TRBE);
+	}
+
+	if (restore_spe)
 		__debug_restore_spe(
 			*host_data_ptr(host_debug_state.pmscr_el1),
 			*host_data_ptr(host_debug_state.pmblimitr_el1));
-	if (vcpu_get_flag(vcpu, DEBUG_STATE_SAVE_TRBE))
+	if (restore_trbe)
 		__debug_restore_trace(*host_data_ptr(host_debug_state.trfcr_el1),
 				      *host_data_ptr(host_debug_state.trblimitr_el1));
 }

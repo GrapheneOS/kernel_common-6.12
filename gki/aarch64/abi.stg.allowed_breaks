@@ -146,3 +146,15 @@ variable symbol changed from 'u64 vendor_data_pad[128]' to 'u64 vendor_data_pad[
   type changed from 'u64[128]' to 'u64[160]'
     number of elements changed from 128 to 160
 
+type 'struct usb_device' changed
+  member 'union { unsigned int offload_at_suspend:1; struct { u64 __kabi_reserved1; }; union { }; }' was removed
+  member 'union { struct { unsigned int offload_at_suspend:1; unsigned int offload_pm_locked:1; }; struct { u64 __kabi_reserved1; }; union { }; }' was added
+
+type 'struct task_struct' changed
+  member 'u64 __kabi_reserved2' was removed
+  member 'union { cpumask_var_t cpumask_sme_dvmsync; struct { u64 __kabi_reserved2; }; union { }; }' was added
+
+type 'struct bindings::bindings_raw::task_struct' changed
+  member 'u64 __kabi_reserved2' was removed
+  member 'union bindings::bindings_raw::task_struct__bindgen_ty_2 __bindgen_anon_2' was added
+

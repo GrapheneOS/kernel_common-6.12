@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-2.0-only
-CFLAGS += $(KHDR_INCLUDES)
+CFLAGS += $(KHDR_INCLUDES) -I../../../../include
 LDFLAGS += -static
 
 TEST_GEN_PROGS := wrapfd

@@ -281,7 +281,7 @@ static struct wrap_content *alloc_dmabuf_content(struct dma_buf *dmabuf,
 
 	dmabuf_content = kmalloc(sizeof(*dmabuf_content), GFP_KERNEL);
 	if (!dmabuf_content)
-		return NULL;
+		return ERR_PTR(-ENOMEM);
 
 	get_dma_buf(dmabuf);
 	dmabuf_content->dmabuf = dmabuf;
@@ -299,13 +299,14 @@ struct wrap_owner {
 
 struct wrap_ctx_mapping {
 	refcount_t refcnt;
+	struct file *file;
 	struct wrap_ctx *ctx;
 	const struct vm_operations_struct *content_vm_ops;
 	struct vm_operations_struct vm_ops;
 };
 
-#define OP_BLOCKED_MODIFICATION	BIT(0)
-#define OP_BLOCKED_MAPPING	BIT(1)
+#define MODIFICATIONS_BLOCKED	BIT(0)
+#define USAGE_BLOCKED		BIT(1)
 
 struct wrap_ctx {
 	struct wrap_content *content;
@@ -313,6 +314,7 @@ struct wrap_ctx {
 	struct wrap_owner owner;
 	bool allow_guests;
 	unsigned long map_count;
+	unsigned long use_count;
 	/*
 	 * Mask of blocked operations when lock is not held due to possiblity
 	 * of sleep during the ongoing operation.
@@ -333,17 +335,38 @@ static struct wrap_ctx *create_wrap_ctx(void)
 	return ctx;
 }
 
-static inline bool is_owner(struct wrap_ctx *ctx)
+static inline void reset_owner(struct wrap_ctx *ctx)
 {
 	assert_spin_locked(&ctx->lock);
-	return ctx->owner.task || ctx->owner.dev;
+	put_task_struct(ctx->owner.task);
+	ctx->owner.task = NULL;
+}
+
+static inline struct task_struct *get_valid_owner(struct wrap_ctx *ctx)
+{
+	assert_spin_locked(&ctx->lock);
+
+	if (!ctx->owner.task)
+		return NULL;
+
+	/* If task exits (passed exit_mm), reset the owner. */
+	if (!ctx->owner.task->mm)
+		reset_owner(ctx);
+
+	return ctx->owner.task;
+}
+
+static inline bool has_owner(struct wrap_ctx *ctx)
+{
+	return get_valid_owner(ctx) || ctx->owner.dev;
 }
 
 static inline bool is_owner_task(struct wrap_ctx *ctx,
 				 struct task_struct *task)
 {
-	assert_spin_locked(&ctx->lock);
-	return ctx->owner.task && ctx->owner.task->mm == task->mm;
+	struct task_struct *owner_task = get_valid_owner(ctx);
+
+	return owner_task && task->group_leader == owner_task;
 }
 
 static inline bool is_owner_dev(struct wrap_ctx *ctx,
@@ -367,14 +390,14 @@ static inline int publish_wrap(struct wrap_ctx *ctx,
 	return ret;
 }
 
-static int can_access(struct wrap_ctx *ctx, struct task_struct *task,
+static int can_modify(struct wrap_ctx *ctx, struct task_struct *task,
 		      bool check_content)
 {
 	assert_spin_locked(&ctx->lock);
 	if (!is_owner_task(ctx, task))
 		return -EBUSY;
 
-	if (ctx->map_count > 0)
+	if (ctx->map_count > 0 || ctx->use_count > 0)
 		return -EINVAL;
 
 	if (check_content && !ctx->content)
@@ -383,10 +406,10 @@ static int can_access(struct wrap_ctx *ctx, struct task_struct *task,
 	return 0;
 }
 
-static bool can_map(struct wrap_ctx *ctx)
+static bool can_use(struct wrap_ctx *ctx)
 {
 	assert_spin_locked(&ctx->lock);
-	return (ctx->block_mask & OP_BLOCKED_MAPPING) == 0;
+	return (ctx->block_mask & USAGE_BLOCKED) == 0;
 }
 
 static int block_operations(struct wrap_ctx *ctx, unsigned int mask)
@@ -395,10 +418,10 @@ static int block_operations(struct wrap_ctx *ctx, unsigned int mask)
 
 	assert_spin_locked(&ctx->lock);
 	/* Any request should at least block modifications. */
-	if (WARN_ON((mask & OP_BLOCKED_MODIFICATION) == 0))
+	if (WARN_ON((mask & MODIFICATIONS_BLOCKED) == 0))
 		return -EINVAL;
 
-	ret = can_access(ctx, current, true);
+	ret = can_modify(ctx, current, true);
 	if (ret)
 		return ret;
 
@@ -441,6 +464,7 @@ static void wrap_vm_open(struct vm_area_struct *vma)
 static void wrap_vm_close(struct vm_area_struct *vma)
 {
 	struct wrap_ctx_mapping *mapping;
+	struct file *file = NULL;
 	struct wrap_ctx *ctx;
 
 	mapping = container_of(vma->vm_ops, struct wrap_ctx_mapping, vm_ops);
@@ -453,9 +477,14 @@ static void wrap_vm_close(struct vm_area_struct *vma)
 		ctx->map_count--;
 	else
 		pr_warn("wrapfd map count underflow\n");
-	if (refcount_dec_and_test(&mapping->refcnt))
+	if (refcount_dec_and_test(&mapping->refcnt)) {
+		if (mapping->file)
+			file = mapping->file;
 		kfree(mapping);
+	}
 	spin_unlock(&ctx->lock);
+	if (file)
+		fput(file);
 }
 
 static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
@@ -467,17 +496,17 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 	int ret = 0;
 
 	spin_lock(&ctx->lock);
-	if (!ctx->allow_guests && is_owner(ctx) &&
+	if (!ctx->allow_guests && has_owner(ctx) &&
 	    !is_owner_task(ctx, current)) {
 		ret = -EBUSY;
 		goto unlock;
 	}
 
 	/*
-	 * If mappings are blocked the content is being rewrapped or emptied.
+	 * If usage is blocked, the content is being rewrapped or emptied.
 	 * Treat this as if the wrap is already empty.
 	 */
-	if (!can_map(ctx)) {
+	if (!can_use(ctx)) {
 		ret = -ENOENT;
 		goto unlock;
 	}
@@ -508,7 +537,7 @@ static int wrap_mmap(struct file *file, struct vm_area_struct *vma)
 	/*
 	 * Increased map_count prevents changes in the
 	 * ownership, rewrapping or emptying the content.
-	 * Therefore content is stable.
+	 * Content is stable.
 	 */
 	ctx->map_count++;
 unlock:
@@ -551,6 +580,14 @@ unlock:
 	vma->vm_ops = &mapping->vm_ops;
 	mapping->ctx = ctx;
 	refcount_set(&mapping->refcnt, 1);
+	/*
+	 * content->ops->mmap might replace original vma->vm_file and vma will
+	 * lose its association with the wrapfd file. In such cases we need to
+	 * take a reference on the wrapfd file and store it to drop the
+	 * refcount mapping is removed.
+	 */
+	if (vma->vm_file != file)
+		mapping->file = get_file(file);
 	spin_unlock(&ctx->lock);
 
 	return 0;
@@ -589,10 +626,10 @@ static int get_wrap_state(struct wrap_ctx *ctx,
 
 	spin_lock(&ctx->lock);
 	/*
-	 * If mappings are blocked the content is being rewrapped or emptied.
+	 * If usage is blocked, the content is being rewrapped or emptied.
 	 * Treat this as if the wrap is already empty.
 	 */
-	if (ctx->content && can_map(ctx)) {
+	if (ctx->content && can_use(ctx)) {
 		if (ctx->content->ops->is_writable(ctx->content))
 			wrapfd_get_state.state = WRAPFD_CONTENT_RDWR;
 		else
@@ -618,12 +655,12 @@ static int wrap_file_acquire_ownership(struct wrap_ctx *ctx)
 	if (is_owner_task(ctx, current))
 		goto unlock;
 
-	if (is_owner(ctx)) {
+	if (has_owner(ctx)) {
 		ret = -EBUSY;
 		goto unlock;
 	}
 
-	if (ctx->map_count > 0) {
+	if (ctx->map_count > 0 || ctx->use_count > 0) {
 		ret = -EINVAL;
 		goto unlock;
 	}
@@ -633,7 +670,7 @@ static int wrap_file_acquire_ownership(struct wrap_ctx *ctx)
 		goto unlock;
 	}
 
-	ctx->owner.task = current;
+	ctx->owner.task = get_task_struct(current->group_leader);
 unlock:
 	spin_unlock(&ctx->lock);
 
@@ -646,11 +683,11 @@ static int wrap_file_release_ownership(struct wrap_ctx *ctx)
 
 	spin_lock(&ctx->lock);
 
-	ret = can_access(ctx, current, false);
+	ret = can_modify(ctx, current, false);
 	if (ret)
 		goto unlock;
 
-	ctx->owner.task = NULL;
+	reset_owner(ctx);
 	ctx->allow_guests = false;
 unlock:
 	spin_unlock(&ctx->lock);
@@ -663,6 +700,9 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 {
 	struct wrapfd_load wrapfd_load;
 	struct file *file;
+	loff_t file_offs;
+	loff_t buf_offs;
+	loff_t len;
 	loff_t end;
 	int ret = 0;
 
@@ -670,10 +710,17 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 			   sizeof(wrapfd_load)))
 		return -EFAULT;
 
-	if (!PAGE_ALIGNED(wrapfd_load.file_offs))
+	file_offs = wrapfd_load.file_offs;
+	buf_offs = wrapfd_load.buf_offs;
+	len = wrapfd_load.len;
+
+	if (file_offs < 0 || buf_offs < 0 || len < 0)
 		return -EINVAL;
 
-	if (!PAGE_ALIGNED(wrapfd_load.buf_offs))
+	if (!PAGE_ALIGNED(file_offs))
+		return -EINVAL;
+
+	if (!PAGE_ALIGNED(buf_offs))
 		return -EINVAL;
 
 	if (wrapfd_load.reserved || wrapfd_load.pad)
@@ -703,8 +750,7 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 		goto put_file;
 	}
 
-	if (check_add_overflow(wrapfd_load.file_offs, wrapfd_load.len,
-			       &end)) {
+	if (check_add_overflow(file_offs, len, &end)) {
 		ret = -EINVAL;
 		goto put_file;
 	}
@@ -715,16 +761,14 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 	}
 
 	spin_lock(&ctx->lock);
-	ret = block_operations(ctx, OP_BLOCKED_MODIFICATION);
+	ret = block_operations(ctx, MODIFICATIONS_BLOCKED);
 	spin_unlock(&ctx->lock);
 
 	if (ret)
 		goto put_file;
 
 	ret = ctx->content->ops->load(ctx->content, file,
-				      wrapfd_load.file_offs,
-				      wrapfd_load.buf_offs,
-				      wrapfd_load.len);
+				      file_offs, buf_offs, len);
 	spin_lock(&ctx->lock);
 	unblock_operations(ctx);
 	spin_unlock(&ctx->lock);
@@ -755,7 +799,7 @@ static int wrap_file_rewrap(struct wrap_ctx *ctx,
 
 	spin_lock(&ctx->lock);
 	ret = block_operations(ctx,
-			       OP_BLOCKED_MODIFICATION | OP_BLOCKED_MAPPING);
+			       MODIFICATIONS_BLOCKED | USAGE_BLOCKED);
 	if (!ret) {
 		content = ctx->content;
 		ctx->content = NULL;
@@ -818,7 +862,7 @@ static int wrap_file_empty(struct wrap_ctx *ctx)
 	spin_lock(&ctx->lock);
 
 	ret = block_operations(ctx,
-			       OP_BLOCKED_MODIFICATION | OP_BLOCKED_MAPPING);
+			       MODIFICATIONS_BLOCKED | USAGE_BLOCKED);
 	if (ret)
 		goto unlock;
 
@@ -840,7 +884,7 @@ static int wrap_file_allow_guests(struct wrap_ctx *ctx, bool allow)
 
 	spin_lock(&ctx->lock);
 
-	ret = can_access(ctx, current, true);
+	ret = can_modify(ctx, current, true);
 	if (ret)
 		goto unlock;
 
@@ -854,13 +898,53 @@ unlock:
 static int wrap_file_ioctl(struct wrap_ctx *ctx,
 			   unsigned int cmd, unsigned long arg)
 {
-	if (!ctx->content)
-		return -ENOENT; /* Wrap is empty */
+	int ret = 0;
 
-	if (ctx->content->ops->ioctl)
-		return ctx->content->ops->ioctl(ctx->content, cmd, arg);
+	spin_lock(&ctx->lock);
+	if (!ctx->allow_guests && has_owner(ctx) &&
+	    !is_owner_task(ctx, current)) {
+		ret = -EBUSY;
+		goto unlock;
+	}
 
-	return -ENOIOCTLCMD;
+	/*
+	 * If usage is blocked, the content is being rewrapped or emptied.
+	 * Treat this as if the wrap is already empty.
+	 */
+	if (!can_use(ctx)) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	if (!ctx->content) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	if (!ctx->content->ops->ioctl) {
+		ret = -ENOIOCTLCMD;
+		goto unlock;
+	}
+
+	/*
+	 * Increased use_count prevents changes in the
+	 * ownership, rewrapping or emptying the content.
+	 * Content is stable.
+	 */
+	ctx->use_count++;
+unlock:
+	spin_unlock(&ctx->lock);
+
+	if (ret)
+		return ret;
+
+	ret = ctx->content->ops->ioctl(ctx->content, cmd, arg);
+
+	spin_lock(&ctx->lock);
+	ctx->use_count--;
+	spin_unlock(&ctx->lock);
+
+	return ret;
 }
 
 static long wrap_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
@@ -907,10 +991,12 @@ static long wrap_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 static void wrap_show_fdinfo(struct seq_file *m, struct file *file)
 {
 	struct wrap_ctx *ctx = file->private_data;
+	struct task_struct *owner_task;
 
 	spin_lock(&ctx->lock);
-	if (ctx->owner.task) {
-		seq_printf(m, "owner:\t%d\n", ctx->owner.task->pid);
+	owner_task = get_valid_owner(ctx);
+	if (owner_task) {
+		seq_printf(m, "owner:\t%d\n", owner_task->pid);
 	} else {
 		if (ctx->owner.dev)
 			seq_printf(m, "owner:\t<device>\n");
@@ -933,7 +1019,7 @@ static void wrap_show_fdinfo(struct seq_file *m, struct file *file)
 
 bool is_wrapfd_vma(struct vm_area_struct *vma)
 {
-	return (vma && (vma->vm_ops->open == wrap_vm_open));
+	return vma && vma->vm_ops && (vma->vm_ops->open == wrap_vm_open);
 }
 
 int wrapfd_get_mappable(struct file *file, struct device *dev,
@@ -952,12 +1038,12 @@ int wrapfd_get_mappable(struct file *file, struct device *dev,
 
 	spin_lock(&ctx->lock);
 
-	if (is_owner(ctx) && !is_owner_dev(ctx, dev)) {
+	if (has_owner(ctx) && !is_owner_dev(ctx, dev)) {
 		ret = -EBUSY;
 		goto unlock;
 	}
 
-	if (ctx->map_count > 0) {
+	if (ctx->map_count > 0 || ctx->use_count > 0) {
 		ret = -EINVAL;
 		goto unlock;
 	}
@@ -985,6 +1071,7 @@ unlock:
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(wrapfd_get_mappable);
 
 int wrapfd_put_mappable(struct file *file, struct device *dev,
 			union wrapfd_mappable *mappable)
@@ -1017,6 +1104,7 @@ unlock:
 
 	return ret;
 }
+EXPORT_SYMBOL_GPL(wrapfd_put_mappable);
 
 static const struct file_operations wrap_fops = {
 	.owner		= THIS_MODULE,
@@ -1031,20 +1119,23 @@ static const struct file_operations wrap_fops = {
 
 static struct wrap_content *create_content_for(int fd, unsigned long prot)
 {
+	bool is_file_writable, writable;
 	struct wrap_content *content;
 	struct dma_buf *dmabuf;
 
 	dmabuf = dma_buf_get(fd);
-	if (!IS_ERR(dmabuf)) {
-		bool writable = !!(prot & PROT_WRITE);
+	if (IS_ERR(dmabuf))
+		return ERR_PTR(PTR_ERR(dmabuf));
 
+	writable = !!(prot & PROT_WRITE);
+	is_file_writable = !!(dmabuf->file->f_mode & FMODE_WRITE);
+	if (writable && !is_file_writable)
+		content = ERR_PTR(-EACCES);
+	else
 		content = alloc_dmabuf_content(dmabuf, writable);
-		dma_buf_put(dmabuf);
+	dma_buf_put(dmabuf);
 
-		return content ? content : ERR_PTR(-ENOMEM);
-	}
-
-	return ERR_PTR(-EINVAL);
+	return content;
 }
 
 static int wrap_file(struct wrap_ctx *ctx,

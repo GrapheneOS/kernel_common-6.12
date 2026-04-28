@@ -33,6 +33,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <linux/align.h>
 #include <linux/dma-buf.h>
 #include <linux/dma-heap.h>
 #include <linux/wrapfd.h>
@@ -226,7 +227,7 @@ static void test_wrap(struct __test_metadata *_metadata,
 
 	/* Ensure that the size of the wrapfd matches the size of the underlying buffer. */
 	ASSERT_EQ(fstat(wrapfd, &sb), 0);
-	ASSERT_EQ(sb.st_size, self->size);
+	ASSERT_EQ(sb.st_size, ALIGN(self->size, self->page_size));
 
 	close(wrapfd);
 }

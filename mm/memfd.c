@@ -425,6 +425,9 @@ SYSCALL_DEFINE2(memfd_create,
 	}
 
 	inode = file_inode(file);
+
+	if (!(flags & MFD_HUGETLB))
+		SHMEM_I(inode)->flags |= SHMEM_FL_MEMFD;
 	error = security_inode_init_security_anon(inode,
 			&QSTR(MEMFD_ANON_NAME), NULL);
 	if (error)

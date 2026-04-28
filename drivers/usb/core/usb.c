@@ -501,7 +501,7 @@ static void usb_release_dev(struct device *dev)
 	kfree(udev->product);
 	kfree(udev->manufacturer);
 	kfree(udev->serial);
-	kfree(udev);
+	kfree(container_of(udev, struct usb_device_ext, udev));
 }
 
 static int usb_dev_uevent(const struct device *dev, struct kobj_uevent_env *env)
@@ -648,22 +648,24 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 				 struct usb_bus *bus, unsigned port1)
 {
 	struct usb_device *dev;
+	struct usb_device_ext *ext;
 	struct usb_hcd *usb_hcd = bus_to_hcd(bus);
 	unsigned raw_port = port1;
 
-	dev = kzalloc(sizeof(*dev), GFP_KERNEL);
-	if (!dev)
+	ext = kzalloc(sizeof(*ext), GFP_KERNEL);
+	if (!ext)
 		return NULL;
+	dev = &ext->udev;
 
 	if (!usb_get_hcd(usb_hcd)) {
-		kfree(dev);
+		kfree(ext);
 		return NULL;
 	}
 	/* Root hubs aren't true devices, so don't allocate HCD resources */
 	if (usb_hcd->driver->alloc_dev && parent &&
 		!usb_hcd->driver->alloc_dev(usb_hcd, dev)) {
 		usb_put_hcd(bus_to_hcd(bus));
-		kfree(dev);
+		kfree(ext);
 		return NULL;
 	}
 
@@ -674,6 +676,7 @@ struct usb_device *usb_alloc_dev(struct usb_device *parent,
 	set_dev_node(&dev->dev, dev_to_node(bus->sysdev));
 	dev->state = USB_STATE_ATTACHED;
 	dev->lpm_disable_count = 1;
+	spin_lock_init(usb_get_offload_lock(dev));
 	dev->offload_usage = 0;
 	atomic_set(&dev->urbnum, 0);
 

@@ -19,6 +19,7 @@
 #include <asm/daifflags.h>
 #include <asm/esr.h>
 #include <asm/exception.h>
+#include <asm/fpsimd.h>
 #include <asm/irq_regs.h>
 #include <asm/kprobes.h>
 #include <asm/mmu.h>
@@ -111,6 +112,7 @@ static __always_inline void __enter_from_user_mode(void)
 	user_exit_irqoff();
 	trace_hardirqs_off_finish();
 	mte_disable_tco_entry(current);
+	sme_enter_from_user_mode();
 }
 
 static __always_inline void enter_from_user_mode(struct pt_regs *regs)
@@ -182,6 +184,7 @@ static __always_inline void exit_to_user_mode_prepare(struct pt_regs *regs)
 		do_notify_resume(regs, flags);
 
 	local_daif_mask();
+	sme_exit_to_user_mode();
 
 	lockdep_sys_exit();
 }

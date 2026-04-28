@@ -357,6 +357,7 @@
   devfreq_cooling_unregister
   devfreq_get_devfreq_by_node
   devfreq_get_devfreq_by_phandle
+  devfreq_get_freq_range
   devfreq_monitor_resume
   devfreq_monitor_start
   devfreq_monitor_stop
@@ -369,6 +370,7 @@
   devfreq_suspend_device
   devfreq_unregister_opp_notifier
   devfreq_update_interval
+  devfreq_update_target
   __dev_fwnode
   __dev_get_by_index
   dev_get_by_index
@@ -2462,6 +2464,7 @@
   skb_copy_datagram_from_iter
   skb_copy_datagram_iter
   skb_copy_expand
+  skb_copy_header
   skb_csum_hwoffload_help
   skb_dequeue
   skb_dequeue_tail
@@ -2632,6 +2635,7 @@
   static_key_slow_inc
   stop_machine
   stop_one_cpu_nowait
+  stpcpy
   strcasecmp
   strchr
   strchrnul
@@ -3157,6 +3161,7 @@
   ufshcd_hold
   ufshcd_init_host_params
   ufshcd_mcq_poll_cqe_lock
+  ufshcd_mcq_poll_n_cqe_lock
   ufshcd_mcq_read_cqis
   ufshcd_mcq_write_cqis
   ufshcd_negotiate_pwr_params

@@ -549,7 +549,7 @@ int kvm_iommu_free_domain(pkvm_handle_t domain_id)
 	if (hyp_vcpu)
 		vm = pkvm_hyp_vcpu_to_hyp_vm(hyp_vcpu);
 
-	if (WARN_ON(atomic_cmpxchg_acquire(&domain->refs, 1, 0) != 1) || domain->vm != vm) {
+	if (domain->vm != vm || WARN_ON(atomic_cmpxchg_acquire(&domain->refs, 1, 0) != 1)) {
 		ret = -EINVAL;
 		goto out_unlock;
 	}
@@ -593,9 +593,16 @@ int kvm_iommu_attach_dev_nested(pkvm_handle_t iommu_id, pkvm_handle_t domain_id,
 	void *s1_desc_hyp_va = kern_hyp_va(s1_desc_hva);
 	void *s1_desc_hyp_va_end = s1_desc_hyp_va + s1_desc_size;
 
-	ret = hyp_pin_shared_mem(s1_desc_hyp_va, s1_desc_hyp_va_end);
+	if (!kvm_iommu_ops || !kvm_iommu_ops->attach_dev_nested)
+		return -ENODEV;
+
+	ret = pkvm_devices_get_context(iommu_id, endpoint_id, NULL);
 	if (ret)
 		return ret;
+
+	ret = hyp_pin_shared_mem(s1_desc_hyp_va, s1_desc_hyp_va_end);
+	if (ret)
+		goto out_put_context;
 
 	iommu = kvm_iommu_ops->get_iommu_by_id(iommu_id);
 	if (!iommu) {
@@ -624,6 +631,8 @@ out_idmap_dom_put:
 		domain_put(idmap_domain);
 out_unpin:
 	hyp_unpin_shared_mem(s1_desc_hyp_va, s1_desc_hyp_va_end);
+out_put_context:
+	pkvm_devices_put_context(iommu_id, endpoint_id);
 	return ret;
 }
 
@@ -636,24 +645,39 @@ int kvm_iommu_detach_dev_nested(pkvm_handle_t iommu_id, pkvm_handle_t domain_id,
 	/* For now, we only support nested domains that use identity mapped stage-2 contexts. */
 	struct kvm_hyp_iommu_domain *idmap_domain;
 
-	iommu = kvm_iommu_ops->get_iommu_by_id(iommu_id);
-	if (!iommu)
-		return -EINVAL;
+	if (!kvm_iommu_ops || !kvm_iommu_ops->detach_dev_nested)
+		return -ENODEV;
 
-	domain = handle_to_domain(domain_id);
-	if (!domain || atomic_read(&domain->refs) <= 1)
-		return -EINVAL;
-
-	idmap_domain = handle_to_domain(KVM_IOMMU_DOMAIN_IDMAP_ID);
-	if (!idmap_domain || atomic_read(&idmap_domain->refs) <= 1)
-		return -EINVAL;
-
-	ret = kvm_iommu_ops->detach_dev_nested(iommu, domain, idmap_domain, endpoint_id, pasid);
+	ret = pkvm_devices_get_context(iommu_id, endpoint_id, NULL);
 	if (ret)
 		return ret;
 
+	iommu = kvm_iommu_ops->get_iommu_by_id(iommu_id);
+	if (!iommu) {
+		ret = -EINVAL;
+		goto out_put_context;
+	}
+
+	domain = handle_to_domain(domain_id);
+	if (!domain || atomic_read(&domain->refs) <= 1) {
+		ret = -EINVAL;
+		goto out_put_context;
+	}
+
+	idmap_domain = handle_to_domain(KVM_IOMMU_DOMAIN_IDMAP_ID);
+	if (!idmap_domain || atomic_read(&idmap_domain->refs) <= 1) {
+		ret = -EINVAL;
+		goto out_put_context;
+	}
+
+	ret = kvm_iommu_ops->detach_dev_nested(iommu, domain, idmap_domain, endpoint_id, pasid);
+	if (ret)
+		goto out_put_context;
+
 	domain_put(idmap_domain);
 	domain_put(domain);
+out_put_context:
+	pkvm_devices_put_context(iommu_id, endpoint_id);
 	return ret;
 }
 

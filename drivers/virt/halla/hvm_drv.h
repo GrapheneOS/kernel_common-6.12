@@ -19,7 +19,7 @@
 #include <linux/types.h>
 
 
-/* UAPI data structure between kernel drvier and user space */
+/* UAPI data structure between kernel driver and user space */
 /* HVM ioctls */
 #define HVM_IOC_MAGIC			0x4C	/* halla */
 

@@ -149,7 +149,12 @@ int hvm_inject_irq(struct hvm *hvm, unsigned int vcpu_idx,
 {
 	unsigned long ret;
 	u64 ids;
-	struct hvm_vcpu *vcpu = hvm->vcpus[vcpu_idx];
+	struct hvm_vcpu *vcpu;
+
+	if (vcpu_idx >= HVM_MAX_VCPUS)
+		return -EINVAL;
+
+	vcpu = hvm->vcpus[vcpu_idx];
 
 	ids = (u32)hvm->vm_id;
 	ids = (ids << 16) | vcpu_idx;
@@ -279,7 +284,7 @@ static int set_dtb_config(struct hvm *hvm, struct hvm_dtb_config *cfg)
 	return (int)ret;
 }
 
-static unsigned long hvm_pre_destory_vm(struct hvm *hvm)
+static unsigned long hvm_pre_destroy_vm(struct hvm *hvm)
 {
 	return exynos_hvc(HVC_FID_HVM_PRE_DESTROY_VM,
 			  hvm->vm_id, 0, 0, 0);
@@ -372,7 +377,7 @@ static void hvm_destroy_vm(struct hvm *hvm)
 
 	mutex_lock(&hvm->lock);
 
-	hvm_pre_destory_vm(hvm);
+	hvm_pre_destroy_vm(hvm);
 
 	hvm_vm_irqfd_release(hvm);
 

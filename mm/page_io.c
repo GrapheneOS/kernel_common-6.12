@@ -29,6 +29,7 @@
 
 #undef CREATE_TRACE_POINTS
 #include <trace/hooks/mm.h>
+#include <trace/hooks/vmscan.h>
 
 static void __end_swap_bio_write(struct bio *bio)
 {
@@ -247,6 +248,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 	int ret;
 
 	if (folio_free_swap(folio)) {
+		trace_android_vh_shrink_folio_lock_owner_clear(folio);
 		folio_unlock(folio);
 		return 0;
 	}
@@ -257,6 +259,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 	ret = arch_prepare_to_swap(folio);
 	if (ret) {
 		folio_mark_dirty(folio);
+		trace_android_vh_shrink_folio_lock_owner_clear(folio);
 		folio_unlock(folio);
 		return ret;
 	}
@@ -269,6 +272,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 	 */
 	if (is_folio_zero_filled(folio)) {
 		swap_zeromap_folio_set(folio);
+		trace_android_vh_shrink_folio_lock_owner_clear(folio);
 		folio_unlock(folio);
 		return 0;
 	} else {
@@ -280,6 +284,7 @@ int swap_writepage(struct page *page, struct writeback_control *wbc)
 		swap_zeromap_folio_clear(folio);
 	}
 	if (zswap_store(folio)) {
+		trace_android_vh_shrink_folio_lock_owner_clear(folio);
 		folio_unlock(folio);
 		return 0;
 	}
@@ -383,6 +388,7 @@ static void swap_writepage_fs(struct folio *folio, struct writeback_control *wbc
 
 	count_swpout_vm_event(folio);
 	folio_start_writeback(folio);
+	trace_android_vh_shrink_folio_lock_owner_clear(folio);
 	folio_unlock(folio);
 	if (wbc->swap_plug)
 		sio = *wbc->swap_plug;
@@ -427,6 +433,7 @@ static void swap_writepage_bdev_sync(struct folio *folio,
 	count_swpout_vm_event(folio);
 
 	folio_start_writeback(folio);
+	trace_android_vh_shrink_folio_lock_owner_clear(folio);
 	folio_unlock(folio);
 
 	submit_bio_wait(&bio);
@@ -448,6 +455,7 @@ static void swap_writepage_bdev_async(struct folio *folio,
 	bio_associate_blkg_from_page(bio, folio);
 	count_swpout_vm_event(folio);
 	folio_start_writeback(folio);
+	trace_android_vh_shrink_folio_lock_owner_clear(folio);
 	folio_unlock(folio);
 	submit_bio(bio);
 }

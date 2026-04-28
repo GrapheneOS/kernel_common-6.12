@@ -964,6 +964,7 @@
   drm_edid_is_valid
   drm_edid_raw
   drm_edid_read_ddc
+  drm_edid_to_speaker_allocation
   drm_encoder_cleanup
   drm_encoder_init
   __drm_err

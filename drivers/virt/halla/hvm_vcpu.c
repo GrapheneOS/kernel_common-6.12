@@ -386,7 +386,7 @@ int hvm_vm_ioctl_create_vcpu(struct hvm *hvm, u32 cpuid)
 	struct hvm_vcpu *vcpu;
 	int ret;
 
-	if (cpuid > HVM_MAX_VCPUS)
+	if (cpuid >= HVM_MAX_VCPUS)
 		return -EINVAL;
 
 	vcpu = kzalloc(sizeof(*vcpu), GFP_KERNEL);

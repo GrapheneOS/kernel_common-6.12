@@ -499,6 +499,7 @@
   dev_kfree_skb_any_reason
   dev_kfree_skb_irq_reason
   dev_load
+  dev_lstats_read
   __devm_add_action
   devm_alloc_etherdev_mqs
   __devm_alloc_percpu
@@ -790,12 +791,12 @@
   drm_atomic_helper_commit_modeset_disables
   drm_atomic_helper_commit_modeset_enables
   drm_atomic_helper_commit_planes
-  __drm_atomic_helper_connector_destroy_state
   drm_atomic_helper_connector_destroy_state
-  __drm_atomic_helper_connector_duplicate_state
+  __drm_atomic_helper_connector_destroy_state
   drm_atomic_helper_connector_duplicate_state
-  __drm_atomic_helper_connector_reset
+  __drm_atomic_helper_connector_duplicate_state
   drm_atomic_helper_connector_reset
+  __drm_atomic_helper_connector_reset
   __drm_atomic_helper_crtc_destroy_state
   __drm_atomic_helper_crtc_duplicate_state
   drm_atomic_helper_damage_iter_init
@@ -1797,8 +1798,8 @@
   __netif_napi_del
   netif_receive_skb
   netif_receive_skb_list
-  __netif_rx
   netif_rx
+  __netif_rx
   netif_set_tso_max_size
   netif_stacked_transfer_operstate
   netif_tx_lock
@@ -2186,8 +2187,8 @@
   pm_genpd_init
   pm_genpd_remove_device
   pm_get_active_wakeup_sources
-  __pm_relax
   pm_relax
+  __pm_relax
   pm_runtime_allow
   __pm_runtime_disable
   pm_runtime_enable
@@ -2202,8 +2203,8 @@
   __pm_runtime_set_status
   __pm_runtime_suspend
   __pm_runtime_use_autosuspend
-  __pm_stay_awake
   pm_stay_awake
+  __pm_stay_awake
   pm_suspend_default_s2idle
   pm_suspend_target_state
   pm_system_wakeup
@@ -2240,8 +2241,8 @@
   proc_dointvec_jiffies
   proc_dointvec_minmax
   proc_doulongvec_minmax
-  _proc_mkdir
   proc_mkdir
+  _proc_mkdir
   proc_mkdir_data
   proc_remove
   proc_set_user
@@ -2672,6 +2673,7 @@
   skb_queue_purge_reason
   skb_queue_tail
   skb_realloc_headroom
+  __skb_recv_datagram
   skb_recv_datagram
   skb_scrub_packet
   skb_set_owner_w
@@ -3686,6 +3688,7 @@
   vfree
   vfs_fsync_range
   vfs_llseek
+  vfs_truncate
   video_devdata
   video_device_alloc
   video_device_release
@@ -3788,14 +3791,16 @@
   vring_transport_features
   vscnprintf
   vsnprintf
+  vsock_addr_bound
+  vsock_addr_cast
   vsock_addr_equals_addr
   vsock_addr_init
-  vsock_addr_cast
-  vsock_addr_bound
+  vsock_add_tap
   vsock_core_register
   vsock_core_unregister
   vsock_deliver_tap
   vsock_for_each_connected_socket
+  vsock_remove_tap
   vsprintf
   vsscanf
   vunmap

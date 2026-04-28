@@ -114,6 +114,8 @@ struct vendor_data {
 	bool			cts_event_workaround;
 	bool			always_enabled;
 	bool			fixed_options;
+	bool			skip_ibrd_fbrd;
+	bool			set_uartclk_rate;
 
 	unsigned int (*get_fifosize)(struct amba_device *dev);
 };
@@ -214,6 +216,28 @@ static struct vendor_data vendor_st = {
 	.always_enabled		= false,
 	.fixed_options		= false,
 	.get_fifosize		= get_fifosize_st,
+};
+
+static unsigned int get_fifosize_nvidia(struct amba_device *dev)
+{
+	return 32;
+}
+
+static struct vendor_data vendor_nvidia = {
+	.reg_offset		= pl011_std_offsets,
+	.ifls			= UART011_IFLS_RX4_8 | UART011_IFLS_TX4_8,
+	.fr_busy		= UART01x_FR_BUSY,
+	.fr_dsr			= UART01x_FR_DSR,
+	.fr_cts			= UART01x_FR_CTS,
+	.fr_ri			= UART011_FR_RI,
+	.oversampling		= false,
+	.dma_threshold		= false,
+	.cts_event_workaround	= false,
+	.always_enabled		= false,
+	.fixed_options		= false,
+	.skip_ibrd_fbrd		= true,
+	.set_uartclk_rate	= true,
+	.get_fifosize		= get_fifosize_nvidia,
 };
 
 /* Deals with DMA transactions */
@@ -615,6 +639,15 @@ static int pl011_dma_tx_refill(struct uart_amba_port *uap)
 		count = PL011_DMA_BUFFER_SIZE;
 
 	count = kfifo_out_peek(&tport->xmit_fifo, dmatx->buf, count);
+
+	/*
+	 * Align the TX buffer length to the DMA controller's copy_align
+	 * requirements. Some DMA controllers (e.g., Tegra GPC DMA) require
+	 * word-aligned transfers. Unaligned bytes will be sent via PIO.
+	 */
+	if (chan->device->copy_align)
+		count = ALIGN_DOWN(count, 1 << chan->device->copy_align);
+
 	dmatx->len = count;
 	dmatx->dma = dma_map_single(dma_dev->dev, dmatx->buf, count,
 				    DMA_TO_DEVICE);
@@ -2033,6 +2066,7 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 	unsigned int lcr_h, old_cr;
 	unsigned long flags;
 	unsigned int baud, quot, clkdiv;
+	unsigned int max_baud;
 	unsigned int bits;
 
 	if (uap->vendor->oversampling)
@@ -2040,11 +2074,34 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 	else
 		clkdiv = 16;
 
+	max_baud = port->uartclk / clkdiv;
+
+	if (uap->vendor->set_uartclk_rate) {
+		long max_clkrate = clk_round_rate(uap->clk, UINT_MAX);
+
+		/*
+		 * Clock is reprogrammable - determine max baud from the clock's
+		 * maximum rate, not the current uartclk.
+		 */
+		if (max_clkrate > 0)
+			max_baud = max_clkrate / clkdiv;
+	}
+
 	/*
 	 * Ask the core to calculate the divisor for us.
 	 */
-	baud = uart_get_baud_rate(port, termios, old, 0,
-				  port->uartclk / clkdiv);
+	baud = uart_get_baud_rate(port, termios, old, 0, max_baud);
+
+	if (uap->vendor->set_uartclk_rate) {
+		int err;
+
+		err = clk_set_rate(uap->clk, baud * clkdiv);
+		if (err) {
+			dev_err(port->dev, "Failed to set clock rate: %d\n", err);
+			return;
+		}
+	}
+
 #ifdef CONFIG_DMA_ENGINE
 	/*
 	 * Adjust RX DMA polling rate with baud rate if not specified.
@@ -2052,11 +2109,6 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 	if (uap->dmarx.auto_poll_rate)
 		uap->dmarx.poll_rate = DIV_ROUND_UP(10000000, baud);
 #endif
-
-	if (baud > port->uartclk / 16)
-		quot = DIV_ROUND_CLOSEST(port->uartclk * 8, baud);
-	else
-		quot = DIV_ROUND_CLOSEST(port->uartclk * 4, baud);
 
 	switch (termios->c_cflag & CSIZE) {
 	case CS5:
@@ -2128,21 +2180,28 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 			old_cr &= ~ST_UART011_CR_OVSFACT;
 	}
 
-	/*
-	 * Workaround for the ST Micro oversampling variants to
-	 * increase the bitrate slightly, by lowering the divisor,
-	 * to avoid delayed sampling of start bit at high speeds,
-	 * else we see data corruption.
-	 */
-	if (uap->vendor->oversampling) {
-		if (baud >= 3000000 && baud < 3250000 && quot > 1)
-			quot -= 1;
-		else if (baud > 3250000 && quot > 2)
-			quot -= 2;
+	if (!uap->vendor->skip_ibrd_fbrd) {
+		if (baud > port->uartclk / 16)
+			quot = DIV_ROUND_CLOSEST(port->uartclk * 8, baud);
+		else
+			quot = DIV_ROUND_CLOSEST(port->uartclk * 4, baud);
+
+		/*
+		 * Workaround for the ST Micro oversampling variants to
+		 * increase the bitrate slightly, by lowering the divisor,
+		 * to avoid delayed sampling of start bit at high speeds,
+		 * else we see data corruption.
+		 */
+		if (uap->vendor->oversampling) {
+			if (baud >= 3000000 && baud < 3250000 && quot > 1)
+				quot -= 1;
+			else if (baud > 3250000 && quot > 2)
+				quot -= 2;
+		}
+		/* Set baud rate */
+		pl011_write(quot & 0x3f, uap, REG_FBRD);
+		pl011_write(quot >> 6, uap, REG_IBRD);
 	}
-	/* Set baud rate */
-	pl011_write(quot & 0x3f, uap, REG_FBRD);
-	pl011_write(quot >> 6, uap, REG_IBRD);
 
 	/*
 	 * ----------v----------v----------v----------v-----
@@ -2355,6 +2414,7 @@ static void pl011_console_get_options(struct uart_amba_port *uap, int *baud,
 				      int *parity, int *bits)
 {
 	unsigned int lcr_h, ibrd, fbrd;
+	unsigned int clkdiv;
 
 	if (!(pl011_read(uap, REG_CR) & UART01x_CR_UARTEN))
 		return;
@@ -2374,10 +2434,15 @@ static void pl011_console_get_options(struct uart_amba_port *uap, int *baud,
 	else
 		*bits = 8;
 
-	ibrd = pl011_read(uap, REG_IBRD);
-	fbrd = pl011_read(uap, REG_FBRD);
+	if (uap->vendor->skip_ibrd_fbrd) {
+		clkdiv = 64;
+	} else {
+		ibrd = pl011_read(uap, REG_IBRD);
+		fbrd = pl011_read(uap, REG_FBRD);
+		clkdiv = 64 * ibrd + fbrd;
+	}
 
-	*baud = uap->port.uartclk * 4 / (64 * ibrd + fbrd);
+	*baud = uap->port.uartclk * 4 / clkdiv;
 
 	if (uap->vendor->oversampling &&
 	    (pl011_read(uap, REG_CR) & ST_UART011_CR_OVSFACT))
@@ -2964,6 +3029,11 @@ static const struct amba_id pl011_ids[] = {
 		.id	= 0x00380802,
 		.mask	= 0x00ffffff,
 		.data	= &vendor_st,
+	},
+	{
+		.id	= 0x0006b011,
+		.mask	= 0x000fffff,
+		.data	= &vendor_nvidia,
 	},
 	{ 0, 0 },
 };

@@ -4888,6 +4888,13 @@ static const struct address_space_operations shmem_aops = {
 #ifdef CONFIG_ASHMEM
 extern long ashmem_memfd_ioctl(struct file *file, unsigned int cmd,
 			       unsigned long arg);
+
+static long shmem_ashmem_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	if (!(SHMEM_I(file_inode(file))->flags & SHMEM_FL_MEMFD))
+		return -ENOTTY;
+	return ashmem_memfd_ioctl(file, cmd, arg);
+}
 #endif
 
 static const struct file_operations shmem_file_operations = {
@@ -4904,9 +4911,9 @@ static const struct file_operations shmem_file_operations = {
 	.fallocate	= shmem_fallocate,
 #endif
 #ifdef CONFIG_ASHMEM
-	.unlocked_ioctl	= ashmem_memfd_ioctl,
+	.unlocked_ioctl	= shmem_ashmem_ioctl,
 #ifdef CONFIG_COMPAT
-	.compat_ioctl	= ashmem_memfd_ioctl,
+	.compat_ioctl	= shmem_ashmem_ioctl,
 #endif
 #endif
 };
