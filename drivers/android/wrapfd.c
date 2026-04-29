@@ -8,6 +8,7 @@
 
 #include <linux/anon_inodes.h>
 #include <linux/bvec.h>
+#include <linux/compat.h>
 #include <linux/dma-buf.h>
 #include <linux/fdtable.h>
 #include <linux/file.h>
@@ -46,7 +47,6 @@ struct wrap_content_operations {
 			    union wrapfd_mappable *mappable);
 	int (*ioctl)(struct wrap_content *content,
 		     unsigned int cmd, unsigned long arg);
-
 };
 
 /* Abstract wrap content to be embedded in a concrete content object. */
@@ -259,7 +259,11 @@ static int dmabuf_content_ioctl(struct wrap_content *content,
 				      content);
 	file = dmabuf_content->dmabuf->file;
 
+	if (in_compat_syscall())
+		return file->f_op->compat_ioctl(file, cmd, arg);
+
 	return file->f_op->unlocked_ioctl(file, cmd, arg);
+
 }
 
 static struct wrap_content_operations dmabuf_content_ops = {
@@ -983,6 +987,20 @@ static long wrap_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 	return ret;
 }
 
+static long wrap_compat_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
+{
+	/* These commands are associated with pointers as arguments, so use compat_ptr() on them. */
+	switch (cmd) {
+	case WRAPFD_DEV_IOC_GET_STATE:
+	case WRAPFD_DEV_IOC_LOAD:
+	case WRAPFD_DEV_IOC_REWRAP:
+		arg = (unsigned long)compat_ptr(arg);
+		break;
+	}
+
+	return wrap_ioctl(file, cmd, arg);
+}
+
 #ifdef CONFIG_PROC_FS
 static void wrap_show_fdinfo(struct seq_file *m, struct file *file)
 {
@@ -1107,7 +1125,7 @@ static const struct file_operations wrap_fops = {
 	.mmap		= wrap_mmap,
 	.release	= wrap_release,
 	.unlocked_ioctl	= wrap_ioctl,
-	.compat_ioctl	= wrap_ioctl,
+	.compat_ioctl	= wrap_compat_ioctl,
 #ifdef CONFIG_PROC_FS
 	.show_fdinfo	= wrap_show_fdinfo,
 #endif
@@ -1194,7 +1212,7 @@ static long wrapfd_dev_ioctl(struct file *file, unsigned int cmd,
 static const struct file_operations wrapfd_dev_fops = {
 	.owner = THIS_MODULE,
 	.unlocked_ioctl = wrapfd_dev_ioctl,
-	.compat_ioctl = wrapfd_dev_ioctl,
+	.compat_ioctl = compat_ptr_ioctl,
 	.llseek = noop_llseek,
 };
 
