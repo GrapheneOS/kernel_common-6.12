@@ -400,8 +400,10 @@
   debugfs_create_devm_seqfile
   debugfs_create_dir
   debugfs_create_file
+  debugfs_create_file_unsafe
   debugfs_create_regset32
   debugfs_create_str
+  debugfs_create_symlink
   debugfs_create_u16
   debugfs_create_u32
   debugfs_create_u32_array
@@ -444,12 +446,17 @@
   _dev_err
   dev_err_probe
   dev_fetch_sw_netstats
+  devfreq_add_device
   devfreq_add_governor
+  devfreq_cooling_unregister
   devfreq_monitor_resume
   devfreq_monitor_start
   devfreq_monitor_stop
   devfreq_monitor_suspend
+  devfreq_remove_device
   devfreq_remove_governor
+  devfreq_resume_device
+  devfreq_suspend_device
   devfreq_update_interval
   __dev_fwnode
   __dev_fwnode_const
@@ -512,6 +519,7 @@
   device_set_of_node_from_dev
   device_set_wakeup_capable
   device_set_wakeup_enable
+  device_show_int
   device_unregister
   device_wakeup_disable
   device_wakeup_enable
@@ -577,6 +585,7 @@
   devm_ioremap
   devm_ioremap_resource
   devm_ioremap_wc
+  devm_iounmap
   devm_kasprintf
   devm_kfree
   devm_kmalloc
@@ -656,7 +665,9 @@
   dev_pm_domain_attach_by_id
   dev_pm_domain_attach_by_name
   dev_pm_domain_detach
+  dev_pm_genpd_resume
   dev_pm_genpd_set_performance_state
+  dev_pm_genpd_suspend
   dev_pm_opp_add_dynamic
   dev_pm_opp_disable
   dev_pm_opp_enable
@@ -666,11 +677,13 @@
   dev_pm_opp_free_cpufreq_table
   dev_pm_opp_get_opp_count
   dev_pm_opp_init_cpufreq_table
+  dev_pm_opp_of_add_table
   dev_pm_opp_of_add_table_indexed
   dev_pm_opp_of_cpumask_remove_table
   dev_pm_opp_of_find_icc_paths
   dev_pm_opp_of_get_opp_desc_node
   dev_pm_opp_of_register_em
+  dev_pm_opp_of_remove_table
   dev_pm_opp_put
   dev_pm_opp_remove
   dev_pm_opp_remove_all_dynamic
@@ -723,9 +736,12 @@
   dma_async_device_unregister
   dma_async_tx_descriptor_init
   dma_buf_attach
+  dma_buf_begin_cpu_access
   dma_buf_detach
   dma_buf_dynamic_attach
+  dma_buf_end_cpu_access
   dma_buf_export
+  dma_buf_fd
   dma_buf_get
   dma_buf_map_attachment
   dma_buf_map_attachment_unlocked
@@ -734,7 +750,9 @@
   dma_buf_unmap_attachment
   dma_buf_unmap_attachment_unlocked
   dma_buf_unpin
+  dma_buf_vmap
   dma_buf_vmap_unlocked
+  dma_buf_vunmap
   dma_buf_vunmap_unlocked
   dmaengine_get_unmap_data
   dmaengine_unmap_put
@@ -743,17 +761,23 @@
   dma_fence_chain_ops
   dma_fence_chain_walk
   dma_fence_context_alloc
+  dma_fence_default_wait
   dma_fence_init
   dma_fence_release
   dma_fence_remove_callback
   dma_fence_signal
   dma_fence_signal_locked
+  dma_fence_signal_timestamp_locked
   dma_fence_wait_timeout
   dma_free_attrs
   dma_free_noncontiguous
   dma_free_pages
   dma_get_any_slave_channel
   dma_get_sgtable_attrs
+  dma_heap_buffer_alloc
+  dma_heap_buffer_free
+  dma_heap_find
+  dma_heap_put
   d_make_root
   dmam_alloc_attrs
   dma_map_page_attrs
@@ -792,6 +816,7 @@
   down
   downgrade_write
   down_interruptible
+  down_killable
   down_read
   down_read_interruptible
   down_read_trylock
@@ -961,6 +986,8 @@
   drm_gem_object_lookup
   drm_gem_object_release
   drm_gem_plane_helper_prepare_fb
+  drm_gem_prime_fd_to_handle
+  drm_gem_prime_handle_to_fd
   drm_gem_private_object_init
   drm_gem_put_pages
   drm_gem_reset_shadow_plane
@@ -1166,6 +1193,7 @@
   _find_next_bit
   _find_next_zero_bit
   find_vma
+  find_vma_intersection
   find_vpid
   finish_no_open
   finish_open
@@ -1367,6 +1395,7 @@
   gpiod_get_direction
   gpiod_get_index_optional
   gpiod_get_optional
+  gpiod_get_raw_value
   gpiod_get_value
   gpiod_get_value_cansleep
   gpiod_is_active_low
@@ -1596,6 +1625,7 @@
   interval_tree_iter_next
   interval_tree_remove
   int_pow
+  int_sqrt
   invalidate_bdev
   invalidate_inode_pages2
   invalidate_inode_pages2_range
@@ -1712,6 +1742,7 @@
   kernel_param_lock
   kernel_param_unlock
   kernel_recvmsg
+  kernel_restart
   kernel_sendmsg
   kernel_sigaction
   kernel_sock_shutdown
@@ -1808,6 +1839,7 @@
   ktime_get_coarse_real_ts64
   ktime_get_coarse_with_offset
   ktime_get_mono_fast_ns
+  ktime_get_raw
   ktime_get_raw_ts64
   ktime_get_real_seconds
   ktime_get_real_ts64
@@ -2141,6 +2173,7 @@
   nvmem_cell_get
   nvmem_cell_put
   nvmem_cell_read
+  nvmem_cell_read_u32
   nvmem_register
   nvmem_unregister
   of_add_property
@@ -2151,9 +2184,11 @@
   of_clk_add_hw_provider
   of_clk_del_provider
   of_clk_get
+  of_clk_get_by_name
   of_clk_get_parent_count
   of_clk_set_defaults
   of_count_phandle_with_args
+  of_devfreq_cooling_register
   of_device_compatible_match
   of_device_get_match_data
   of_device_is_available
@@ -2227,6 +2262,7 @@
   of_platform_populate
   of_property_count_elems_of_size
   of_property_match_string
+  of_property_read_reg
   of_property_read_string
   of_property_read_string_helper
   of_property_read_u32_index
@@ -2239,6 +2275,7 @@
   of_prop_next_u32
   of_request_module
   of_reserved_mem_device_init_by_idx
+  of_reserved_mem_device_init_by_name
   of_reserved_mem_device_release
   of_reserved_mem_lookup
   __of_reset_control_get
@@ -2324,6 +2361,7 @@
   pci_epc_init_notify
   pci_find_capability
   pci_find_ext_capability
+  pci_find_host_bridge
   pci_find_next_capability
   pci_free_irq
   pci_free_irq_vectors
@@ -2785,6 +2823,7 @@
   release_resource
   release_sock
   remap_pfn_range
+  remap_vmalloc_range
   remove_proc_entry
   remove_proc_subtree
   remove_wait_queue
@@ -2862,6 +2901,8 @@
   scatterwalk_map_and_copy
   sched_clock
   sched_setattr_nocheck
+  sched_set_fifo
+  sched_set_fifo_low
   sched_set_normal
   schedule
   schedule_timeout
@@ -3141,13 +3182,22 @@
   snd_card_new
   snd_card_register
   snd_card_rw_proc_new
+  snd_component_add
   snd_ctl_add
+  _snd_ctl_add_follower
+  snd_ctl_add_vmaster_hook
+  snd_ctl_apply_vmaster_followers
   snd_ctl_boolean_mono_info
   snd_ctl_enum_info
   snd_ctl_find_id
+  snd_ctl_make_virtual_master
   snd_ctl_new1
   snd_ctl_notify
+  snd_ctl_remove
   snd_ctl_remove_id
+  snd_ctl_rename_id
+  snd_ctl_sync_vmaster
+  snd_device_disconnect
   snd_device_free
   snd_device_new
   snd_dma_alloc_dir_pages
@@ -3178,6 +3228,8 @@
   snd_pcm_hw_constraint_list
   snd_pcm_hw_constraint_minmax
   snd_pcm_hw_constraint_step
+  snd_pcm_hw_limit_rates
+  snd_pcm_hw_params_bits
   snd_pcm_lib_free_pages
   snd_pcm_lib_ioctl
   snd_pcm_lib_malloc_pages
@@ -3186,10 +3238,12 @@
   snd_pcm_rate_bit_to_rate
   snd_pcm_set_managed_buffer_all
   snd_pcm_set_ops
+  snd_pcm_std_chmaps
   _snd_pcm_stream_lock_irqsave
   snd_pcm_stream_unlock_irqrestore
   snd_pcm_suspend_all
   snd_sgbuf_get_addr
+  snd_sgbuf_get_chunk_size
   snd_soc_add_component_controls
   snd_soc_bytes_info_ext
   snd_soc_card_jack_new
@@ -4055,6 +4109,7 @@
   __vmalloc_noprof
   vmalloc_noprof
   vmalloc_to_page
+  vmalloc_user_noprof
   vmap
   __vma_start_write
   vmemdup_user
