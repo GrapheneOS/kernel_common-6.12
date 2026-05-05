@@ -232,21 +232,59 @@ static void test_wrap(struct __test_metadata *_metadata,
 	close(wrapfd);
 }
 
-static void test_load(struct __test_metadata *_metadata,
-		      FIXTURE_DATA(wrapfd_tests) *self, int fd)
+static int __test_load(struct __test_metadata *_metadata,
+		       FIXTURE_DATA(wrapfd_tests) *self, int wrapfd)
+{
+	int ret;
+
+	clear_content(_metadata, self, wrapfd);
+	ret = cmp_content(_metadata, self, wrapfd);
+	EXPECT_NE(cmp_content(_metadata, self, wrapfd), 0)
+		return ret;
+
+	ret = wrapfd_load(wrapfd, self->fd, 0, 0, self->size);
+	EXPECT_EQ(ret, 0)
+		return ret;
+
+	ret = cmp_content(_metadata, self, wrapfd);
+	EXPECT_EQ(ret, 0);
+	/* TODO: test more load offsets */
+
+	return ret;
+}
+
+static void test_load_mapped(struct __test_metadata *_metadata,
+			     FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
 	int wrapfd;
+	char *ptr;
 
-	/* Load the file content first */
 	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
 	ASSERT_TRUE(wrapfd >= 0);
 	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
-	clear_content(_metadata, self, wrapfd);
-	ASSERT_NE(cmp_content(_metadata, self, wrapfd), 0);
-	ASSERT_EQ(wrapfd_load(wrapfd, self->fd, 0, 0, self->size), 0);
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
-	/* TODO: test more load offsets */
+	/* Loading should still work while a buffer is mapped. */
+	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED, wrapfd, 0);
+	ASSERT_NE(ptr, MAP_FAILED);
+
+	ASSERT_EQ(__test_load(_metadata, self, wrapfd), 0);
+
+	ASSERT_EQ(munmap(ptr, self->size), 0);
+
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
+	close(wrapfd);
+}
+
+static void test_load_unmapped(struct __test_metadata *_metadata,
+			       FIXTURE_DATA(wrapfd_tests) *self, int fd)
+{
+	int wrapfd;
+
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
+	ASSERT_TRUE(wrapfd >= 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
+
+	ASSERT_EQ(__test_load(_metadata, self, wrapfd), 0);
 
 	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
 	close(wrapfd);
@@ -700,7 +738,8 @@ static void run_tests(struct __test_metadata *_metadata,
 		      FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
 	test_wrap(_metadata, self, fd);
-	test_load(_metadata, self, fd);
+	test_load_mapped(_metadata, self, fd);
+	test_load_unmapped(_metadata, self, fd);
 	test_wrap_rdonly(_metadata, self, fd);
 	test_wrap_rdwr(_metadata, self, fd);
 	test_remap_file_pages(_metadata, self, fd);
