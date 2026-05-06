@@ -175,8 +175,8 @@ static inline binder_uintptr_t rust_binder_node_ptr(rust_binder_node t)
  * with BR_SPAWN_LOOPER, and an entered looper is one that userspace decided to
  * create on its own volition.
  */
-#define LOOPER_REGISTERED 0x01
-#define LOOPER_ENTERED 0x02
-#define LOOPER_EXITED 0x04
+#define RB_LOOPER_REGISTERED 0x01
+#define RB_LOOPER_ENTERED 0x02
+#define RB_LOOPER_EXITED 0x04
 
 #endif
