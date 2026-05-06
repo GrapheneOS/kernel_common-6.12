@@ -1140,7 +1140,7 @@ impl Thread {
                 }
             };
 
-        crate::trace::trace_transaction_alloc_buf(debug_id, tr);
+        crate::trace::trace_transaction_alloc_buf(debug_id, data_size, offsets_size, buffers_size);
 
         // SAFETY: This accesses a union field, but it's okay because the field's type is valid for
         // all bit-patterns.
