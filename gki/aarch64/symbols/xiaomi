@@ -648,4 +648,5 @@ __traceiter_android_vh_cma_alloc_end
 # folio writeback hooks
 __tracepoint_android_vh_folio_end_writeback
 __traceiter_android_vh_folio_end_writeback
-
+__tracepoint_android_vh_folio_start_writeback
+__traceiter_android_vh_folio_start_writeback
