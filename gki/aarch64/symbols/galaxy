@@ -251,3 +251,5 @@
   blkcg_root
   blkcg_activate_policy
   blkcg_deactivate_policy
+  netlink_ack
+
