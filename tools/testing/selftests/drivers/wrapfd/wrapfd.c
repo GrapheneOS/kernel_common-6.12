@@ -123,6 +123,25 @@ static int dmabuf_heap_alloc(int heap_fd, size_t len)
 	return ret < 0 ? ret : data.fd;
 }
 
+static int dmabuf_sync(int dmabuf_fd, bool start, int access_type)
+{
+	struct dma_buf_sync sync = {
+		.flags = (start ? DMA_BUF_SYNC_START : DMA_BUF_SYNC_END) | access_type,
+	};
+
+	return ioctl(dmabuf_fd, DMA_BUF_IOCTL_SYNC, &sync);
+}
+
+static int dmabuf_sync_start(int dmabuf_fd, int access_type)
+{
+	return dmabuf_sync(dmabuf_fd, true, access_type);
+}
+
+static int dmabuf_sync_end(int dmabuf_fd, int access_type)
+{
+	return dmabuf_sync(dmabuf_fd, false, access_type);
+}
+
 static void generate_file_content(char *content, size_t size)
 {
 	srand(time(NULL));
@@ -190,7 +209,9 @@ static int cmp_content(struct __test_metadata *_metadata,
 
 	ptr = mmap(NULL, self->size, PROT_READ, MAP_SHARED, wrapfd, 0);
 	ASSERT_NE(ptr, MAP_FAILED);
+	ASSERT_EQ(dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_READ), 0);
 	ret = memcmp(self->content, ptr, self->size);
+	ASSERT_EQ(dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_READ), 0);
 	ASSERT_EQ(munmap(ptr, self->size), 0);
 
 	return ret;
@@ -204,7 +225,9 @@ static void clear_content(struct __test_metadata *_metadata,
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_NE(ptr, MAP_FAILED);
+	ASSERT_EQ(dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_WRITE), 0);
 	memset(ptr, 0, self->size);
+	ASSERT_EQ(dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_WRITE), 0);
 	ASSERT_EQ(munmap(ptr, self->size), 0);
 }
 
@@ -325,6 +348,7 @@ static void test_wrap_rdwr(struct __test_metadata *_metadata,
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_NE(ptr, MAP_FAILED);
+	ASSERT_EQ(dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_RW), 0);
 	ptr[0]++;
 
 	/* Check content of the buffer after modification */
@@ -332,6 +356,8 @@ static void test_wrap_rdwr(struct __test_metadata *_metadata,
 
 	/* Restore buffer content */
 	ptr[0]--;
+	ASSERT_EQ(dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_RW), 0);
+
 
 	/* Confirm the final content */
 	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
@@ -423,7 +449,9 @@ static void test_wrap_fork(struct __test_metadata *_metadata,
 	ASSERT_FALSE(pid < 0);
 	if (pid == 0) {
 		/* Check the content from the child */
+		ASSERT_EQ(dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_READ), 0);
 		ASSERT_EQ(memcmp(self->content, ptr, self->size), 0);
+		ASSERT_EQ(dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_READ), 0);
 		exit(EXIT_SUCCESS);
 	} else {
 		ASSERT_NE(wait(&status), -1);
