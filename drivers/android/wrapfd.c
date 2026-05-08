@@ -197,7 +197,7 @@ static int dmabuf_content_mmap(struct wrap_content *content,
 	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
 				      content);
 
-	ret = dma_buf_mmap(dmabuf_content->dmabuf, vma, 0);
+	ret = dma_buf_mmap(dmabuf_content->dmabuf, vma, vma->vm_pgoff);
 	if (ret)
 		return ret;
 
