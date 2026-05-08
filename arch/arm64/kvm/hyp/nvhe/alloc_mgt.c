@@ -20,7 +20,7 @@ int hyp_alloc_mgt_refill(unsigned long id, struct kvm_hyp_memcache *host_mc)
 {
 	struct hyp_mgt_allocator_ops *ops;
 
-	if (id > MAX_ALLOC_ID)
+	if (id >= MAX_ALLOC_ID)
 		return -EINVAL;
 
 	id = array_index_nospec(id, MAX_ALLOC_ID);
