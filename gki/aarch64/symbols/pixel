@@ -2050,6 +2050,7 @@
   pkvm_iommu_resume
   pkvm_iommu_suspend
   __pkvm_load_el2_module
+  __pkvm_register_el2_call
   __pkvm_topup_hyp_alloc
   platform_bus_type
   platform_device_add
@@ -2223,6 +2224,7 @@
   rdev_get_regmap
   read_comp_algo_dictionary
   reboot_mode
+  refcount_dec_and_mutex_lock
   refcount_dec_not_one
   refcount_warn_saturate
   __refrigerator
@@ -2591,6 +2593,7 @@
   spi_controller_resume
   spi_controller_suspend
   spi_delay_exec
+  spi_delay_to_ns
   spi_finalize_current_message
   spi_finalize_current_transfer
   spi_mem_default_supports_op
@@ -2793,6 +2796,7 @@
   __traceiter_android_rvh_gup_longterm_locked
   __traceiter_android_rvh_hw_protection_shutdown
   __traceiter_android_rvh_iommu_alloc_insert_iova
+  __traceiter_android_rvh_iommu_dma_info_to_prot
   __traceiter_android_rvh_iommu_iovad_init_alloc_algo
   __traceiter_android_rvh_iommu_limit_align_shift
   __traceiter_android_rvh_irqs_disable
@@ -2828,6 +2832,7 @@
   __traceiter_android_rvh_ufs_reprogram_all_keys
   __traceiter_android_rvh_update_blocked_fair
   __traceiter_android_rvh_update_load_avg
+  __traceiter_android_rvh_update_load_sum
   __traceiter_android_rvh_update_rt_rq_load_avg
   __traceiter_android_rvh_util_est_update
   __traceiter_android_rvh_util_fits_cpu
@@ -2956,6 +2961,7 @@
   __tracepoint_android_rvh_gup_longterm_locked
   __tracepoint_android_rvh_hw_protection_shutdown
   __tracepoint_android_rvh_iommu_alloc_insert_iova
+  __tracepoint_android_rvh_iommu_dma_info_to_prot
   __tracepoint_android_rvh_iommu_iovad_init_alloc_algo
   __tracepoint_android_rvh_iommu_limit_align_shift
   __tracepoint_android_rvh_irqs_disable
@@ -2991,6 +2997,7 @@
   __tracepoint_android_rvh_ufs_reprogram_all_keys
   __tracepoint_android_rvh_update_blocked_fair
   __tracepoint_android_rvh_update_load_avg
+  __tracepoint_android_rvh_update_load_sum
   __tracepoint_android_rvh_update_rt_rq_load_avg
   __tracepoint_android_rvh_util_est_update
   __tracepoint_android_rvh_util_fits_cpu
