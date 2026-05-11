@@ -1717,6 +1717,8 @@ void folio_end_writeback(struct folio *folio)
 	folio_get(folio);
 	if (__folio_end_writeback(folio))
 		folio_wake_bit(folio, PG_writeback);
+	else
+		trace_android_vh_folio_end_writeback(folio);
 
 	filemap_end_dropbehind_write(folio);
 	acct_reclaim_writeback(folio);

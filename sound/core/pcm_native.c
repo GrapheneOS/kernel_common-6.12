@@ -25,6 +25,9 @@
 #include <linux/uio.h>
 #include <linux/delay.h>
 #include <linux/bitops.h>
+#include <linux/android_kabi.h>
+ANDROID_KABI_DECLONLY(trace_eval_map);
+#include <trace/hooks/sound.h>
 
 #include "pcm_local.h"
 
@@ -1439,9 +1442,14 @@ static int snd_pcm_pre_start(struct snd_pcm_substream *substream,
 			     snd_pcm_state_t state)
 {
 	struct snd_pcm_runtime *runtime = substream->runtime;
+	bool no_buffer = false;
 	if (runtime->state != SNDRV_PCM_STATE_PREPARED)
 		return -EBADFD;
+
+	trace_android_vh_snd_pcm_check_no_buffer(substream, &no_buffer);
+
 	if (substream->stream == SNDRV_PCM_STREAM_PLAYBACK &&
+	    !no_buffer &&
 	    !snd_pcm_playback_data(substream))
 		return -EPIPE;
 	runtime->trigger_tstamp_latched = false;
