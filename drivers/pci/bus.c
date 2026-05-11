@@ -334,9 +334,6 @@ void pci_bus_add_device(struct pci_dev *dev)
 	struct platform_device *pdev;
 	int retval;
 
-	/* Save config space for error recoverability */
-	pci_save_state(dev);
-
 	/*
 	 * Can not put in pci_device_add yet because resources
 	 * are not assigned yet for some devices.
@@ -373,6 +370,9 @@ void pci_bus_add_device(struct pci_dev *dev)
 	 * configured completely.
 	 */
 	pm_runtime_enable(&dev->dev);
+
+	/* Save config space for error recoverability */
+	pci_save_state(dev);
 
 	dev->match_driver = !dn || of_device_is_available(dn);
 	retval = device_attach(&dev->dev);
