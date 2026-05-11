@@ -789,6 +789,22 @@ static void test_ioctl(struct __test_metadata *_metadata,
 	close(wrapfd);
 }
 
+static void test_lseek(struct __test_metadata *_metadata,
+		       FIXTURE_DATA(wrapfd_tests) *self, int fd)
+{
+	int wrapfd;
+
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
+	ASSERT_TRUE(wrapfd >= 0);
+
+	/* Verify the dmabuf size is what we expect; dmabuf sizes are page aligned. */
+	ASSERT_EQ(lseek(wrapfd, 0, SEEK_END), ALIGN(self->size, self->page_size));
+	ASSERT_EQ(lseek(wrapfd, 0, SEEK_SET), 0);
+
+	close(wrapfd);
+}
+
+
 static void run_tests(struct __test_metadata *_metadata,
 		      FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
@@ -807,6 +823,7 @@ static void run_tests(struct __test_metadata *_metadata,
 	test_close_on_exec(_metadata, self, fd);
 	test_guests(_metadata, self, fd);
 	test_ioctl(_metadata, self, fd);
+	test_lseek(_metadata, self, fd);
 }
 
 TEST_F(wrapfd_tests, wrapfd_test_dmabuf_system_heap)

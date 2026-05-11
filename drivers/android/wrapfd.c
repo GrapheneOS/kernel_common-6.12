@@ -33,6 +33,7 @@ struct wrap_content_operations {
 	int (*create_wrap)(struct wrap_content *content, struct wrap_ctx *ctx);
 	int (*load)(struct wrap_content *content, struct file *file,
 		    loff_t file_offs, loff_t buf_offs, loff_t len);
+	loff_t (*llseek)(struct wrap_content *content, loff_t offs, int whence);
 	int (*mmap_prepare)(struct wrap_content *content,
 			    struct vm_area_struct *vma);
 	int (*mmap)(struct wrap_content *content, struct vm_area_struct *vma);
@@ -188,6 +189,18 @@ static bool dmabuf_content_is_writable(struct wrap_content *content)
 	return dmabuf_content->writable;
 }
 
+static loff_t dmabuf_content_llseek(struct wrap_content *content, loff_t offs, int whence)
+{
+	struct wrap_content_dmabuf *dmabuf_content;
+	struct file *file;
+
+	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
+				      content);
+	file = dmabuf_content->dmabuf->file;
+
+	return file->f_op->llseek(file, offs, whence);
+}
+
 static int dmabuf_content_mmap(struct wrap_content *content,
 			       struct vm_area_struct *vma)
 {
@@ -269,6 +282,7 @@ static int dmabuf_content_ioctl(struct wrap_content *content,
 static struct wrap_content_operations dmabuf_content_ops = {
 	.create_wrap		= dmabuf_content_create_wrap,
 	.load			= dmabuf_content_load,
+	.llseek			= dmabuf_content_llseek,
 	.mmap			= dmabuf_content_mmap,
 	.make_writable		= dmabuf_content_make_writable,
 	.is_writable		= dmabuf_content_is_writable,
@@ -604,6 +618,47 @@ err_dec:
 	ctx->map_count--;
 	spin_unlock(&ctx->lock);
 err:
+	return ret;
+}
+
+static loff_t wrap_llseek(struct file *file, loff_t offs, int whence)
+{
+	struct wrap_ctx *ctx = file->private_data;
+	struct wrap_content *content;
+	loff_t ret = 0;
+
+	spin_lock(&ctx->lock);
+	/*
+	 * If usage is blocked, the content is being rewrapped or emptied.
+	 * Treat this as if the wrap is already empty.
+	 */
+	if (!context_use(ctx)) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	content = ctx->content;
+	if (!content) {
+		ret = -ENOENT;
+		goto unlock;
+	}
+
+	if (!content->ops->llseek) {
+		ret = -ESPIPE;
+		goto unlock;
+	}
+unlock:
+	spin_unlock(&ctx->lock);
+
+	if (ret)
+		return ret;
+
+	ret = content->ops->llseek(content, offs, whence);
+
+	spin_lock(&ctx->lock);
+	context_unuse(ctx);
+	spin_unlock(&ctx->lock);
+
 	return ret;
 }
 
@@ -1122,6 +1177,7 @@ EXPORT_SYMBOL_GPL(wrapfd_put_mappable);
 
 static const struct file_operations wrap_fops = {
 	.owner		= THIS_MODULE,
+	.llseek		= wrap_llseek,
 	.mmap		= wrap_mmap,
 	.release	= wrap_release,
 	.unlocked_ioctl	= wrap_ioctl,
