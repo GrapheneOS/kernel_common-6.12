@@ -836,6 +836,13 @@ static int dma_buf_mmap_internal(struct file *file, struct vm_area_struct *vma)
 
 	ret = dmabuf->ops->mmap(dmabuf, vma);
 	if (!ret && vma->vm_file == file) {
+		/*
+		 * dmabuf VMAs must not be mergeable. If the exporter forgot to set a VM_SPECIAL
+		 * flag, force one now.
+		 */
+		if (WARN_ON(!(vma->vm_flags & VM_SPECIAL)))
+			vm_flags_set(vma, VM_DONTEXPAND);
+
 		int err = dma_buf_account_task(dmabuf, vma->vm_mm->dmabuf_info);
 
 		if (err)
@@ -2238,6 +2245,13 @@ int dma_buf_mmap(struct dma_buf *dmabuf, struct vm_area_struct *vma,
 
 	ret = dmabuf->ops->mmap(dmabuf, vma);
 	if (!ret && vma->vm_file == dmabuf->file) {
+		/*
+		 * dmabuf VMAs must not be mergeable. If the exporter forgot to set a VM_SPECIAL
+		 * flag, force one now.
+		 */
+		if (WARN_ON(!(vma->vm_flags & VM_SPECIAL)))
+			vm_flags_set(vma, VM_DONTEXPAND);
+
 		int err = dma_buf_account_task(dmabuf, vma->vm_mm->dmabuf_info);
 
 		if (err)
