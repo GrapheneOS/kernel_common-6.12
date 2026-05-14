@@ -1728,7 +1728,7 @@ static int selinux_inode_check_tsec_flags(
 	u32 perms, struct common_audit_data *adp)
 {
 	int rc;
-	struct selinux_state *s = &selinux_state;
+	struct context_types context_types;
 	u32 inode_type;
 	u64 flags = cred_tsec_flags(cred);
 	u64 denied_flags = 0;
@@ -1746,7 +1746,7 @@ static int selinux_inode_check_tsec_flags(
 			// none of the DENY_EXEC_* flags are set
 			return 0;
 		}
-		rc = security_sid_to_context_type(isec->sid, &inode_type);
+		rc = security_sid_to_context_type(isec->sid, &inode_type, &context_types);
 
 		if (rc) {
 			pr_warn("unknown type for sid %i, inode %lu\n", isec->sid, isec->inode->i_ino);
@@ -1758,15 +1758,15 @@ static int selinux_inode_check_tsec_flags(
 
 #define DENY_FLAG(s) denied_flags = s; flag_str = #s
 
-		if (inode_type == s->types.appdomain_tmpfs) {
+		if (inode_type == context_types.appdomain_tmpfs) {
 			DENY_FLAG(TSEC_FLAG_DENY_EXECUTE_APPDOMAIN_TMPFS);
-		} else if (inode_type == s->types.app_data_file) {
+		} else if (inode_type == context_types.app_data_file) {
 			DENY_FLAG(TSEC_FLAG_DENY_EXECUTE_APP_DATA_FILE);
-		} else if (inode_type == s->types.ashmem_device) {
+		} else if (inode_type == context_types.ashmem_device) {
 			DENY_FLAG(TSEC_FLAG_DENY_EXECUTE_ASHMEM_DEVICE);
-		} else if (inode_type == s->types.ashmem_libcutils_device) {
+		} else if (inode_type == context_types.ashmem_libcutils_device) {
 			DENY_FLAG(TSEC_FLAG_DENY_EXECUTE_ASHMEM_LIBCUTILS_DEVICE);
-		} else if (inode_type == s->types.privapp_data_file) {
+		} else if (inode_type == context_types.privapp_data_file) {
 			DENY_FLAG(TSEC_FLAG_DENY_EXECUTE_PRIVAPP_DATA_FILE);
 		} else {
 			return 0;
@@ -2228,10 +2228,11 @@ static int selinux_binder_transfer_file(const struct cred *from,
 static bool is_crash_dump_sid(u32 sid)
 {
 	u32 type;
-	if (security_sid_to_context_type(sid, &type)) {
+	struct context_types context_types;
+	if (security_sid_to_context_type(sid, &type, &context_types)) {
 		return false;
 	}
-	return type == selinux_state.types.crash_dump;
+	return type == context_types.crash_dump;
 }
 
 static int selinux_ptrace_access_check(struct task_struct *child,
@@ -2464,6 +2465,7 @@ static int selinux_bprm_creds_for_exec(struct linux_binprm *bprm)
 	struct task_security_struct *new_tsec;
 	struct inode_security_struct *isec;
 	struct common_audit_data ad;
+	struct context_types context_types;
 	struct inode *inode = file_inode(bprm->file);
 	int rc;
 	u32 inode_context_type;
@@ -2537,11 +2539,11 @@ static int selinux_bprm_creds_for_exec(struct linux_binprm *bprm)
 			return rc;
 
 		if (old_tsec->flags & TSEC_FLAG_DENY_EXECUTE_NO_TRANS_APP_DATA_FILE) {
-			rc = security_sid_to_context_type(isec->sid, &inode_context_type);
+			rc = security_sid_to_context_type(isec->sid, &inode_context_type, &context_types);
 			if (rc)
 				return rc;
 
-			if (inode_context_type == selinux_state.types.app_data_file) {
+			if (inode_context_type == context_types.app_data_file) {
 				audit_log_tsec_flag_denial(TSEC_FLAG_DENY_EXECUTE_NO_TRANS_APP_DATA_FILE, &ad);
 				return -EACCES;
 			}
@@ -6620,6 +6622,7 @@ static int selinux_lsm_setattr(u64 attr, void *value, size_t size)
 	struct task_security_struct *tsec;
 	struct cred *new;
 	u32 mysid = current_sid(), sid = 0, ptsid, context_type = 0;
+	struct context_types context_types;
 	int error;
 	char *str = value;
 	u64 flags;
@@ -6749,13 +6752,13 @@ static int selinux_lsm_setattr(u64 attr, void *value, size_t size)
 
 		tsec->sid = sid;
 	} else if (attr == LSM_ATTR_SELINUX_FLAGS) {
-		error = security_sid_to_context_type(mysid, &context_type);
+		error = security_sid_to_context_type(mysid, &context_type, &context_types);
 		if (error) {
 			goto abort_change;
 		}
 
-		if (context_type != selinux_state.types.zygote &&
-			context_type != selinux_state.types.webview_zygote
+		if (context_type != context_types.zygote &&
+			context_type != context_types.webview_zygote
 		) {
 			pr_err("selinux_flags: attempt to set from an unknown context, pid %i\n", current->pid);
 			error = -EPERM;

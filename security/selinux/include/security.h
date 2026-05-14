@@ -109,8 +109,6 @@ struct selinux_state {
 	bool android_netlink_route;
 	bool android_netlink_getneigh;
 
-	struct context_types types;
-
 	struct page *status_page;
 	struct mutex status_lock;
 
@@ -305,7 +303,7 @@ int security_change_sid(u32 ssid, u32 tsid, u16 tclass, u32 *out_sid);
 
 int security_sid_to_context(u32 sid, char **scontext, u32 *scontext_len);
 
-int security_sid_to_context_type(u32 sid, u32 *out);
+int security_sid_to_context_type(u32 sid, u32 *out, struct context_types *types);
 
 int security_sid_to_context_force(u32 sid, char **scontext, u32 *scontext_len);
 

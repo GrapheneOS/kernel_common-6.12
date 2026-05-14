@@ -1384,17 +1384,15 @@ out_unlock:
 }
 
 // based on security_sid_to_context_core() above
-int security_sid_to_context_type(u32 sid, u32 *out)
+int security_sid_to_context_type(u32 sid, u32 *out, struct context_types *types)
 {
 	struct selinux_policy *policy;
-	struct policydb *policydb;
 	struct sidtab *sidtab;
 	struct sidtab_entry *entry;
 	int rc = 0;
 
 	rcu_read_lock();
 	policy = rcu_dereference(selinux_state.policy);
-	policydb = &policy->policydb;
 	sidtab = policy->sidtab;
 
 	entry = sidtab_search_entry(sidtab, sid);
@@ -1406,6 +1404,8 @@ int security_sid_to_context_type(u32 sid, u32 *out)
 	}
 
 	*out = entry->context.type;
+	if (types)
+		*types = policy->context_types;
 
 out_unlock:
 	rcu_read_unlock();

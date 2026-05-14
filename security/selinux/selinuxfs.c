@@ -559,10 +559,10 @@ static int resolve_context_type(struct selinux_load_state *lstate, const char *n
 	return 0;
 }
 
-static int resolve_context_types(struct selinux_load_state *lstate, struct context_types *types) {
+static int resolve_context_types(struct selinux_load_state *lstate) {
 	int rc;
 
-#define RESOLVE_TYPE(t) rc = resolve_context_type(lstate, #t, &types->t); if (rc) return rc
+#define RESOLVE_TYPE(t) rc = resolve_context_type(lstate, #t, &lstate->policy->context_types.t); if (rc) return rc
 
 	RESOLVE_TYPE(app_data_file);
 	RESOLVE_TYPE(appdomain_tmpfs);
@@ -620,8 +620,7 @@ static ssize_t sel_write_load(struct file *file, const char __user *buf,
 		selinux_policy_cancel(&load_state);
 		goto out_unlock;
 	}
-
-	length = resolve_context_types(&load_state, &selinux_state.types);
+	length = resolve_context_types(&load_state);
 	if (length) {
 // don't cancel loading sepolicy because of missing context_types in microdroid sepolicy
 #if !IS_ENABLED(CONFIG_MICRODROID)
@@ -629,6 +628,7 @@ static ssize_t sel_write_load(struct file *file, const char __user *buf,
 		goto out;
 #endif
 	}
+
 
 	selinux_policy_commit(&load_state);
 	length = count;

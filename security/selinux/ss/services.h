@@ -27,6 +27,7 @@ struct selinux_policy {
 	struct sidtab *sidtab;
 	struct policydb policydb;
 	struct selinux_map map;
+	struct context_types context_types;
 	u32 latest_granting;
 } __randomize_layout;
 
