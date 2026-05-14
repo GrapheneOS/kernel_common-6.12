@@ -1557,11 +1557,16 @@ static void free_bprm(struct linux_binprm *bprm)
 	kfree(bprm);
 }
 
+#define FLAG_COMPAT_VA_39_BIT (1 << 30)
+
 static struct linux_binprm *alloc_bprm(int fd, struct filename *filename, int flags)
 {
 	struct linux_binprm *bprm;
 	struct file *file;
 	int retval = -ENOMEM;
+	bool compat_va_39_bit = flags & FLAG_COMPAT_VA_39_BIT;
+
+	flags &= ~FLAG_COMPAT_VA_39_BIT;
 
 	file = do_open_execat(fd, filename, flags);
 	if (IS_ERR(file))
@@ -1574,6 +1579,7 @@ static struct linux_binprm *alloc_bprm(int fd, struct filename *filename, int fl
 	}
 
 	bprm->file = file;
+	bprm->compat_va_39_bit = compat_va_39_bit;
 
 	if (fd == AT_FDCWD || filename->name[0] == '/') {
 		bprm->filename = filename->name;
@@ -1967,10 +1973,6 @@ static int do_execveat_common(int fd, struct filename *filename,
 		retval = PTR_ERR(bprm);
 		goto out_ret;
 	}
-
-#define FLAG_COMPAT_VA_39_BIT (1 << 31)
-	bprm->compat_va_39_bit = flags & FLAG_COMPAT_VA_39_BIT;
-	flags &= ~FLAG_COMPAT_VA_39_BIT; // flag validation fails when it sees an unknown flag
 
 	retval = count(argv, MAX_ARG_STRINGS);
 	if (retval == 0)
