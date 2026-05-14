@@ -32,4 +32,4 @@ find virt_dist/ -type f -name "*.ko" \
 
 mapfile -t common_sig < <(modinfo common_dist/*.ko | grep "sig_key" | awk '{print $NF}')
 mapfile -t virt_sig < <(modinfo virt_dist/*.ko | grep "sig_key" | awk '{print $NF}')
-if [[ "$ARCH" == "x86_64" ]]; then [[ $common_sig == $virt_sig ]] && echo "Signature verification success" || echo "Signature verification failure"; fi
+[[ $common_sig == $virt_sig ]] && echo "Signature verification success" || echo "Signature verification failure"
