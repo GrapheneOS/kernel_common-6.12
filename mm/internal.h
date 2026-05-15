@@ -801,6 +801,10 @@ struct compact_control {
 					 * ensure forward progress.
 					 */
 	bool alloc_contig;		/* alloc_contig_range allocation */
+};
+
+struct compact_control_ext {
+	struct compact_control *cc;
 	unsigned int nr_migrate_file_pages;	/* Number of file pages to migrate */
 };
 

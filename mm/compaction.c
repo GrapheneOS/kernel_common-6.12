@@ -877,9 +877,10 @@ static bool skip_isolation_on_order(int order, int target_order)
  * and cc->nr_migratepages is updated accordingly.
  */
 static int
-isolate_migratepages_block(struct compact_control *cc, unsigned long low_pfn,
+isolate_migratepages_block(struct compact_control_ext *cc_ext, unsigned long low_pfn,
 			unsigned long end_pfn, isolate_mode_t mode)
 {
+	struct compact_control *cc = cc_ext->cc;
 	pg_data_t *pgdat = cc->zone->zone_pgdat;
 	unsigned long nr_scanned = 0, nr_isolated = 0;
 	struct lruvec *lruvec;
@@ -1255,7 +1256,7 @@ isolate_success_no_list:
 		nr_isolated += folio_nr_pages(folio);
 		nr_scanned += folio_nr_pages(folio) - 1;
 		if (!folio_test_anon(folio))
-			cc->nr_migrate_file_pages += folio_nr_pages(folio);
+			cc_ext->nr_migrate_file_pages += folio_nr_pages(folio);
 
 		/*
 		 * Avoid isolating too much unless this block is being
@@ -1295,7 +1296,7 @@ isolate_fail:
 			}
 			putback_movable_pages(&cc->migratepages);
 			cc->nr_migratepages = 0;
-			cc->nr_migrate_file_pages = 0;
+			cc_ext->nr_migrate_file_pages = 0;
 			nr_isolated = 0;
 		}
 
@@ -1369,6 +1370,7 @@ int
 isolate_migratepages_range(struct compact_control *cc, unsigned long start_pfn,
 							unsigned long end_pfn)
 {
+	struct compact_control_ext cc_ext = { .cc = cc };
 	unsigned long pfn, block_start_pfn, block_end_pfn;
 	int ret = 0;
 
@@ -1389,7 +1391,7 @@ isolate_migratepages_range(struct compact_control *cc, unsigned long start_pfn,
 					block_end_pfn, cc->zone))
 			continue;
 
-		ret = isolate_migratepages_block(cc, pfn, block_end_pfn,
+		ret = isolate_migratepages_block(&cc_ext, pfn, block_end_pfn,
 						 ISOLATE_UNEVICTABLE);
 
 		if (ret)
@@ -1426,9 +1428,10 @@ static bool suitable_migration_source(struct compact_control *cc,
 }
 
 /* Returns true if the page is within a block suitable for migration to */
-static bool suitable_migration_target(struct compact_control *cc,
+static bool suitable_migration_target(struct compact_control_ext *cc_ext,
 							struct page *page)
 {
+	struct compact_control *cc = cc_ext->cc;
 	bool bypass = false;
 
 	/* If the page is a large free page, then disallow migration */
@@ -1452,7 +1455,7 @@ static bool suitable_migration_target(struct compact_control *cc,
 		return true;
 
 	/* Allow file pages to migrate only into MIGRATE_MOVABLE blocks */
-	if (cc->nr_migrate_file_pages)
+	if (cc_ext->nr_migrate_file_pages)
 		return get_pageblock_migratetype(page) == MIGRATE_MOVABLE;
 
 	/* If the block is MIGRATE_MOVABLE or MIGRATE_CMA, allow migration */
@@ -1566,8 +1569,9 @@ static int next_search_order(struct compact_control *cc, int order)
 	return order;
 }
 
-static void fast_isolate_freepages(struct compact_control *cc)
+static void fast_isolate_freepages(struct compact_control_ext *cc_ext)
 {
+	struct compact_control *cc = cc_ext->cc;
 	unsigned int limit = max(1U, freelist_scan_limit(cc) >> 1);
 	unsigned int nr_scanned = 0, total_isolated = 0;
 	unsigned long low_pfn, min_pfn, highest = 0;
@@ -1713,7 +1717,7 @@ static void fast_isolate_freepages(struct compact_control *cc)
 						min(pageblock_end_pfn(min_pfn),
 						    zone_end_pfn(cc->zone)),
 						cc->zone);
-					if (page && !suitable_migration_target(cc, page))
+					if (page && !suitable_migration_target(cc_ext, page))
 						page = NULL;
 
 					cc->free_pfn = min_pfn;
@@ -1739,8 +1743,9 @@ static void fast_isolate_freepages(struct compact_control *cc)
  * Based on information in the current compact_control, find blocks
  * suitable for isolating free pages from and then isolate them.
  */
-static void isolate_freepages(struct compact_control *cc)
+static void isolate_freepages(struct compact_control_ext *cc_ext)
 {
+	struct compact_control *cc = cc_ext->cc;
 	struct zone *zone = cc->zone;
 	struct page *page;
 	unsigned long block_start_pfn;	/* start of current pageblock */
@@ -1751,7 +1756,7 @@ static void isolate_freepages(struct compact_control *cc)
 	bool bypass = false;
 
 	/* Try a small search of the free lists for a candidate */
-	fast_isolate_freepages(cc);
+	fast_isolate_freepages(cc_ext);
 	if (cc->nr_freepages)
 		return;
 
@@ -1804,7 +1809,7 @@ static void isolate_freepages(struct compact_control *cc)
 		}
 
 		/* Check the block is suitable for migration */
-		if (!suitable_migration_target(cc, page))
+		if (!suitable_migration_target(cc_ext, page))
 			continue;
 
 		/* If isolation recently failed, do not retry */
@@ -1866,7 +1871,8 @@ static void isolate_freepages(struct compact_control *cc)
  */
 static struct folio *compaction_alloc_noprof(struct folio *src, unsigned long data)
 {
-	struct compact_control *cc = (struct compact_control *)data;
+	struct compact_control_ext *cc_ext = (struct compact_control_ext *)data;
+	struct compact_control *cc = cc_ext->cc;
 	struct folio *dst;
 	int order = folio_order(src);
 	bool has_isolated_pages = false;
@@ -1883,7 +1889,7 @@ again:
 	if (start_order == NR_PAGE_ORDERS) {
 		if (has_isolated_pages)
 			return NULL;
-		isolate_freepages(cc);
+		isolate_freepages(cc_ext);
 		has_isolated_pages = true;
 		goto again;
 	}
@@ -1924,7 +1930,8 @@ static struct folio *compaction_alloc(struct folio *src, unsigned long data)
  */
 static void compaction_free(struct folio *dst, unsigned long data)
 {
-	struct compact_control *cc = (struct compact_control *)data;
+	struct compact_control_ext *cc_ext = (struct compact_control_ext *)data;
+	struct compact_control *cc = cc_ext->cc;
 	int order = folio_order(dst);
 	struct page *page = &dst->page;
 
@@ -2112,8 +2119,9 @@ static unsigned long fast_find_migrateblock(struct compact_control *cc)
  * starting at the block pointed to by the migrate scanner pfn within
  * compact_control.
  */
-static isolate_migrate_t isolate_migratepages(struct compact_control *cc)
+static isolate_migrate_t isolate_migratepages(struct compact_control_ext *cc_ext)
 {
+	struct compact_control *cc = cc_ext->cc;
 	unsigned long block_start_pfn;
 	unsigned long block_end_pfn;
 	unsigned long low_pfn;
@@ -2198,7 +2206,7 @@ static isolate_migrate_t isolate_migratepages(struct compact_control *cc)
 		}
 
 		/* Perform the isolation */
-		if (isolate_migratepages_block(cc, low_pfn, block_end_pfn,
+		if (isolate_migratepages_block(cc_ext, low_pfn, block_end_pfn,
 						isolate_mode))
 			return ISOLATE_ABORT;
 
@@ -2557,6 +2565,10 @@ compact_zone(struct compact_control *cc, struct capture_control *capc)
 	unsigned int nr_succeeded = 0, nr_migratepages;
 	int order;
 	long vendor_ret;
+	struct compact_control_ext cc_ext = {
+		.cc = cc,
+		.nr_migrate_file_pages = 0,
+	};
 
 	/*
 	 * These counters track activities during zone compaction.  Initialize
@@ -2652,12 +2664,12 @@ compact_zone(struct compact_control *cc, struct capture_control *capc)
 		}
 
 rescan:
-		switch (isolate_migratepages(cc)) {
+		switch (isolate_migratepages(&cc_ext)) {
 		case ISOLATE_ABORT:
 			ret = COMPACT_CONTENDED;
 			putback_movable_pages(&cc->migratepages);
 			cc->nr_migratepages = 0;
-			cc->nr_migrate_file_pages = 0;
+			cc_ext.nr_migrate_file_pages = 0;
 			goto out;
 		case ISOLATE_NONE:
 			if (update_cached) {
@@ -2684,14 +2696,14 @@ rescan:
 		 */
 		nr_migratepages = cc->nr_migratepages;
 		err = migrate_pages(&cc->migratepages, compaction_alloc,
-				compaction_free, (unsigned long)cc, cc->mode,
+				compaction_free, (unsigned long)&cc_ext, cc->mode,
 				MR_COMPACTION, &nr_succeeded);
 
 		trace_mm_compaction_migratepages(nr_migratepages, nr_succeeded);
 
 		/* All pages were either migrated or will be released */
 		cc->nr_migratepages = 0;
-		cc->nr_migrate_file_pages = 0;
+		cc_ext.nr_migrate_file_pages = 0;
 		if (err) {
 			putback_movable_pages(&cc->migratepages);
 			/*
