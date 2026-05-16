@@ -192,3 +192,11 @@ type 'struct tegra_mc_ops' changed
   member 'int(* probe_device)(struct tegra_mc*, struct device*)' changed
     offset changed by -64
 
+type 'struct task_struct' changed
+  member 'u64 __kabi_reserved3' was removed
+  member 'union { struct { unsigned int user_dumpable:1; }; struct { u64 __kabi_reserved3; }; union { }; }' was added
+
+type 'struct bindings::bindings_raw::task_struct' changed
+  member 'u64 __kabi_reserved3' was removed
+  member 'union bindings::bindings_raw::task_struct__bindgen_ty_3 __bindgen_anon_3' was added
+
