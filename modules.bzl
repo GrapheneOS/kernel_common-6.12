@@ -93,6 +93,11 @@ COMMON_GKI_MODULES_LIST = _COMMON_GKI_MODULES_LIST
 _ARM_GKI_MODULES_LIST = [
     # keep sorted
     "drivers/ptp/ptp_kvm.ko",
+    "fs/pstore/pstore_blk.ko",
+    "fs/pstore/pstore_zone.ko",
+    "sound/pci/hda/snd-hda-codec-hdmi.ko",
+    "sound/soc/generic/snd-soc-audio-graph-card.ko",
+    "sound/soc/generic/snd-soc-simple-card-utils.ko",
 ]
 
 _ARM64_GKI_MODULES_LIST = [

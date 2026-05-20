@@ -5038,15 +5038,21 @@ static bool try_to_shrink_lruvec(struct lruvec *lruvec, struct scan_control *sc)
 
 	while (true) {
 		int delta;
+		bool bypass = false;
 
 		nr_to_scan = get_nr_to_scan(lruvec, sc, swappiness);
 		if (nr_to_scan <= 0)
 			break;
 
+		trace_android_rvh_mglru_shrink_spec_lru(lruvec, sc, swappiness, &delta,
+							nr_to_scan, &scanned, &bypass);
+		if (bypass)
+			goto check_abort;
+
 		delta = evict_folios(lruvec, sc, swappiness);
 		if (!delta)
 			break;
-
+check_abort:
 		scanned += delta;
 		if (scanned >= nr_to_scan)
 			break;
@@ -6864,6 +6870,7 @@ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
 
 	return nr_reclaimed;
 }
+EXPORT_SYMBOL_GPL(try_to_free_pages);
 
 #ifdef CONFIG_MEMCG
 

@@ -133,6 +133,8 @@ static void hvm_drv_remove(struct platform_device *pdev)
 {
 	hvm_drv_irqfd_exit();
 	hvm_destroy_all_vms();
+	hvm_drv_debug_exit();
+	hvm_vtimer_exit();
 	misc_deregister(&hvm_dev);
 }
 

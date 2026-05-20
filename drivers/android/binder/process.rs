@@ -49,6 +49,7 @@ use crate::{
     range_alloc::{RangeAllocator, ReserveNew, ReserveNewArgs},
     stats::BinderStats,
     thread::{PushWorkRes, Thread},
+    transaction::TransactionInfo,
     BinderfsProcFile, DArc, DLArc, DTRWrap, DeliverToRead,
 };
 
@@ -697,7 +698,7 @@ impl Process {
     fn get_current_thread(self: ArcBorrow<'_, Self>) -> Result<Arc<Thread>> {
         let id = {
             let current = kernel::current!();
-            if !core::ptr::eq(current.group_leader(), &*self.task) {
+            if self.task != current.group_leader() {
                 pr_err!("get_current_thread was called from the wrong process.");
                 return Err(EINVAL);
             }
@@ -1018,16 +1019,15 @@ impl Process {
         self: &Arc<Self>,
         debug_id: usize,
         size: usize,
-        is_oneway: bool,
-        from_pid: i32,
+        info: &mut TransactionInfo,
     ) -> BinderResult<NewAllocation> {
         use kernel::page::PAGE_SIZE;
 
         let mut reserve_new_args = ReserveNewArgs {
             debug_id,
             size,
-            is_oneway,
-            pid: from_pid,
+            is_oneway: info.is_oneway(),
+            pid: info.from_pid,
             ..ReserveNewArgs::default()
         };
 
@@ -1043,13 +1043,13 @@ impl Process {
             reserve_new_args = alloc_request.make_alloc()?;
         };
 
+        info.oneway_spam_suspect = new_alloc.oneway_spam_detected;
         let res = Allocation::new(
             self.clone(),
             debug_id,
             new_alloc.offset,
             size,
             addr + new_alloc.offset,
-            new_alloc.oneway_spam_detected,
         );
 
         // This allocation will be marked as in use until the `Allocation` is used to free it.
@@ -1081,7 +1081,7 @@ impl Process {
         let mapping = inner.mapping.as_mut()?;
         let offset = ptr.checked_sub(mapping.address)?;
         let (size, debug_id, odata) = mapping.alloc.reserve_existing(offset).ok()?;
-        let mut alloc = Allocation::new(self.clone(), debug_id, offset, size, ptr, false);
+        let mut alloc = Allocation::new(self.clone(), debug_id, offset, size, ptr);
         if let Some(data) = odata {
             alloc.set_info(data);
         }
@@ -1435,8 +1435,7 @@ impl Process {
                 .alloc
                 .take_for_each(|offset, size, debug_id, odata| {
                     let ptr = offset + address;
-                    let mut alloc =
-                        Allocation::new(self.clone(), debug_id, offset, size, ptr, false);
+                    let mut alloc = Allocation::new(self.clone(), debug_id, offset, size, ptr);
                     if let Some(data) = odata {
                         alloc.set_info(data);
                     }
@@ -1697,7 +1696,7 @@ impl Process {
         vma: &mm::virt::VmaNew,
     ) -> Result {
         // We don't allow mmap to be used in a different process.
-        if !core::ptr::eq(kernel::current!().group_leader(), &*this.task) {
+        if this.task != kernel::current!().group_leader() {
             return Err(EINVAL);
         }
         if vma.start() == 0 {

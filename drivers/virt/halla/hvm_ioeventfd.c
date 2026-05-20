@@ -145,8 +145,10 @@ static int hvm_assign_ioeventfd(struct hvm *hvm,
 		return PTR_ERR(evt_ctx);
 
 	evt = kmalloc(sizeof(*evt), GFP_KERNEL);
-	if (!evt)
+	if (!evt) {
+		eventfd_ctx_put(evt_ctx);
 		return -ENOMEM;
+	}
 	*evt = (struct hvm_ioevent) {
 		.addr = args->addr,
 		.len = args->len,

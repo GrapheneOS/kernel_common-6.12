@@ -52,7 +52,7 @@ static int pin_one_page(struct hvm *vm, unsigned long hva, u64 gpa,
 {
 	u32 flags = FOLL_HWPOISON | FOLL_LONGTERM | FOLL_WRITE;
 	struct hvm_pinned_page *ppage = NULL;
-	struct mm_struct *mm = current->mm;
+	struct mm_struct *mm = vm->mm;
 	struct page *page = NULL;
 	int ret;
 

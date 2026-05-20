@@ -463,6 +463,11 @@ struct zram_wb_req {
 	struct list_head entry;
 };
 
+struct zram_prefetch_ctl {
+	atomic_t num_inflight;
+	wait_queue_head_t done_wait;
+};
+
 struct zram_rb_req {
 	struct work_struct work;
 	struct zram *zram;
@@ -477,6 +482,7 @@ struct zram_rb_req {
 		int error;
 	};
 	u32 index;
+	struct zram_prefetch_ctl *pf_ctl;
 };
 
 static ssize_t compressed_writeback_store(struct device *dev,
@@ -1152,6 +1158,12 @@ static int zram_populate_table(struct zram *zram, struct page *page, u32 index)
 	return 0;
 }
 
+static inline void zram_prefetch_dec_and_wake(struct zram_prefetch_ctl *pf_ctl)
+{
+	if (atomic_dec_and_test(&pf_ctl->num_inflight))
+		wake_up(&pf_ctl->done_wait);
+}
+
 static void zram_deferred_prefetch(struct work_struct *w)
 {
 	struct zram_rb_req *req = container_of(w, struct zram_rb_req, work);
@@ -1163,6 +1175,7 @@ static void zram_deferred_prefetch(struct work_struct *w)
 
 	__free_page(page);
 	bio_put(req->bio);
+	zram_prefetch_dec_and_wake(req->pf_ctl);
 	kfree(req);
 }
 
@@ -1172,6 +1185,7 @@ static void zram_prefetch_read_endio(struct bio *bio)
 	struct page *page = bio_first_page_all(bio);
 
 	if (bio->bi_status) {
+		zram_prefetch_dec_and_wake(req->pf_ctl);
 		__free_page(page);
 		bio_put(bio);
 		kfree(req);
@@ -1187,7 +1201,8 @@ static void zram_prefetch_read_endio(struct bio *bio)
 }
 
 static int zram_prefetch_from_bdev(struct zram *zram, struct page *page,
-				   u32 index, unsigned long blk_idx)
+				   u32 index, unsigned long blk_idx,
+				   struct zram_prefetch_ctl *pf_ctl)
 {
 	struct zram_rb_req *req;
 	struct bio *bio;
@@ -1208,12 +1223,14 @@ static int zram_prefetch_from_bdev(struct zram *zram, struct page *page,
 	req->index = index;
 	req->blk_idx = blk_idx;
 	req->bio = bio;
+	req->pf_ctl = pf_ctl;
 
 	bio->bi_iter.bi_sector = blk_idx * (PAGE_SIZE >> 9);
 	bio->bi_private = req;
 	bio->bi_end_io = zram_prefetch_read_endio;
 
 	__bio_add_page(bio, page, PAGE_SIZE, 0);
+	atomic_inc(&pf_ctl->num_inflight);
 	submit_bio(bio);
 
 	return 0;
@@ -1222,10 +1239,14 @@ static int zram_prefetch_from_bdev(struct zram *zram, struct page *page,
 int zram_prefetch_slots(struct zram *zram, struct zram_pp_ctl *ctl)
 {
 	struct zram_pp_slot *pps;
+	struct zram_prefetch_ctl pf_ctl;
 	int ret = 0;
 	u32 index = 0;
 	unsigned long blk_idx;
 	struct page *page = NULL;
+
+	atomic_set(&pf_ctl.num_inflight, 0);
+	init_waitqueue_head(&pf_ctl.done_wait);
 
 	while ((pps = select_pp_slot(ctl))) {
 		index = pps->index;
@@ -1246,7 +1267,8 @@ int zram_prefetch_slots(struct zram *zram, struct zram_pp_ctl *ctl)
 		}
 
 		/* Read the page from backing device and restore to zram */
-		ret = zram_prefetch_from_bdev(zram, page, index, blk_idx);
+		ret = zram_prefetch_from_bdev(zram, page, index, blk_idx,
+					      &pf_ctl);
 		if (ret)
 			break;
 
@@ -1262,6 +1284,8 @@ unlock_next:
 
 	if (page)
 		__free_page(page);
+
+	wait_event(pf_ctl.done_wait, atomic_read(&pf_ctl.num_inflight) == 0);
 	return ret;
 }
 

@@ -158,3 +158,37 @@ type 'struct bindings::bindings_raw::task_struct' changed
   member 'u64 __kabi_reserved2' was removed
   member 'union bindings::bindings_raw::task_struct__bindgen_ty_2 __bindgen_anon_2' was added
 
+function symbol 'struct tegra_mc* devm_tegra_memory_controller_get(struct device*)' changed
+  CRC changed from 0x67b44ae8 to 0xcadf1a59
+
+function symbol 'int tegra_mc_get_carveout_info(struct tegra_mc*, unsigned int, phys_addr_t*, u64*)' changed
+  CRC changed from 0x340cdadc to 0xf6145143
+
+function symbol 'int tegra_mc_probe_device(struct tegra_mc*, struct device*)' changed
+  CRC changed from 0x16da55a to 0x54725c5b
+
+type 'struct tegra_mc' changed
+  byte size changed from 320 to 312
+  member 'int irq' was removed
+  10 members ('const struct tegra_mc_soc* soc' .. 'struct { struct dentry* root; } debugfs') changed
+    offset changed by -64
+
+type 'struct tegra_mc_soc' changed
+  byte size changed from 112 to 160
+  member 'u32 intmask' was removed
+  3 members ('u32 ch_intmask' .. 'bool has_addr_hi_reg') changed
+    offset changed by -32
+  member 'const struct tegra_mc_regs* regs' was added
+  member 'const irq_handler_t* handle_irq' was added
+  member 'unsigned int num_interrupts' was added
+  member 'unsigned int mc_addr_hi_mask' was added
+  member 'unsigned int mc_err_status_type_mask' was added
+  member 'const struct tegra_mc_intmask* intmasks' was added
+  member 'unsigned int num_intmasks' was added
+
+type 'struct tegra_mc_ops' changed
+  byte size changed from 40 to 32
+  member 'irqreturn_t(* handle_irq)(int, void*)' was removed
+  member 'int(* probe_device)(struct tegra_mc*, struct device*)' changed
+    offset changed by -64
+
