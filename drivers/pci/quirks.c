@@ -27,6 +27,7 @@
 #include <linux/ktime.h>
 #include <linux/mm.h>
 #include <linux/nvme.h>
+#include <linux/of.h>
 #include <linux/platform_data/x86/apple.h>
 #include <linux/pm_runtime.h>
 #include <linux/suspend.h>
@@ -6365,3 +6366,17 @@ static void pci_mask_replay_timer_timeout(struct pci_dev *pdev)
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_GLI, 0x9750, pci_mask_replay_timer_timeout);
 DECLARE_PCI_FIXUP_FINAL(PCI_VENDOR_ID_GLI, 0x9755, pci_mask_replay_timer_timeout);
 #endif
+
+/*
+ * BRCM STB uses its own system to turn on/off regulators and this
+ * conflicts with PCI_PWRCTRL.  Return true if we observe a BRCM RC node in
+ * the device tree.
+ */
+bool brcm_pcie_pwrctrl_quirk(struct device_node *np)
+{
+	const char *str;
+
+	return np && !of_property_read_string(np, "compatible", &str)
+		&& !strncmp(str, "brcm,bcm", 8)
+		&& !strncmp(str + strlen(str) - 5, "-pcie", 5);
+}
