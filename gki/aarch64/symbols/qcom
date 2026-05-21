@@ -2100,6 +2100,7 @@
   ns_to_timespec64
   n_tty_ioctl_helper
   __num_online_cpus
+  nvmem_add_one_cell
   nvmem_cell_get
   nvmem_cell_put
   nvmem_cell_read
@@ -2109,6 +2110,10 @@
   nvmem_cell_write
   nvmem_device_read
   nvmem_device_write
+  __nvmem_layout_driver_register
+  nvmem_layout_driver_unregister
+  nvmem_layout_register
+  nvmem_layout_unregister
   of_address_to_resource
   of_alias_from_compatible
   of_alias_get_id
@@ -2187,6 +2192,7 @@
   of_n_addr_cells
   of_node_name_eq
   of_n_size_cells
+  of_nvmem_layout_get_container
   __of_parse_phandle_with_args
   of_pci_parse_bus_range
   of_phandle_iterator_init
