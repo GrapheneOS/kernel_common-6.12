@@ -966,6 +966,9 @@ size_t kvm_iommu_map_sg(pkvm_handle_t domain_id, unsigned long iova, struct kvm_
 	if (prot & ~IOMMU_PROT_MASK)
 		return 0;
 
+	if (domain_id == KVM_IOMMU_DOMAIN_IDMAP_ID)
+		return 0;
+
 	domain = handle_to_domain(domain_id);
 	if (!domain || domain_get(domain))
 		return 0;
