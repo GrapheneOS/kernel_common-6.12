@@ -31,6 +31,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <linux/align.h>
@@ -490,6 +491,14 @@ static void test_wrap_rdwr(struct __test_metadata *_metadata,
 
 	close(wrapfd);
 }
+
+/* Bionic's implementation of libc does not have a wrapper for remap_file_pages(). */
+#ifdef __ANDROID__
+static int remap_file_pages(void *addr, size_t size, int prot, size_t pgoff, int flags)
+{
+	return syscall(__NR_remap_file_pages, addr, size, prot, pgoff, flags);
+}
+#endif
 
 static void test_remap_file_pages(struct __test_metadata *_metadata,
 				  FIXTURE_DATA(wrapfd_tests) *self, int fd)
