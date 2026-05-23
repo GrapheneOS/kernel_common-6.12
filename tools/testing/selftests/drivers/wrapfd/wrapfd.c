@@ -39,6 +39,8 @@
 #include <linux/wrapfd.h>
 #include "../../kselftest_harness.h"
 
+#define offset_in_page(addr, page_size) ((addr) & (page_size - 1))
+
 /* ioctl wrappers */
 static inline int wrapfd_wrap(int dev_fd, int fd, int prot)
 {
@@ -123,6 +125,25 @@ static int dmabuf_heap_alloc(int heap_fd, size_t len)
 	return ret < 0 ? ret : data.fd;
 }
 
+static int dmabuf_sync(int dmabuf_fd, bool start, int access_type)
+{
+	struct dma_buf_sync sync = {
+		.flags = (start ? DMA_BUF_SYNC_START : DMA_BUF_SYNC_END) | access_type,
+	};
+
+	return ioctl(dmabuf_fd, DMA_BUF_IOCTL_SYNC, &sync);
+}
+
+static int dmabuf_sync_start(int dmabuf_fd, int access_type)
+{
+	return dmabuf_sync(dmabuf_fd, true, access_type);
+}
+
+static int dmabuf_sync_end(int dmabuf_fd, int access_type)
+{
+	return dmabuf_sync(dmabuf_fd, false, access_type);
+}
+
 static void generate_file_content(char *content, size_t size)
 {
 	srand(time(NULL));
@@ -183,15 +204,22 @@ FIXTURE_TEARDOWN(wrapfd_tests)
 }
 
 static int cmp_content(struct __test_metadata *_metadata,
-		       FIXTURE_DATA(wrapfd_tests) *self, int wrapfd)
+		       FIXTURE_DATA(wrapfd_tests) *self, int wrapfd, unsigned long file_offs,
+		       unsigned long buf_offs, unsigned long len)
 {
+	/* mmap() operates on page aligned offsets and lengths, so handle that here. */
+	unsigned long aligned_buf_offs = ALIGN_DOWN(buf_offs, self->page_size);
+	unsigned long buf_pg_offs = offset_in_page(buf_offs, self->page_size);
+	unsigned long aligned_len = ALIGN(buf_offs + len, self->page_size) - aligned_buf_offs;
 	char *ptr;
 	int ret;
 
-	ptr = mmap(NULL, self->size, PROT_READ, MAP_SHARED, wrapfd, 0);
+	ptr = mmap(NULL, aligned_len, PROT_READ, MAP_SHARED, wrapfd, aligned_buf_offs);
 	ASSERT_NE(ptr, MAP_FAILED);
-	ret = memcmp(self->content, ptr, self->size);
-	ASSERT_EQ(munmap(ptr, self->size), 0);
+	ASSERT_EQ(dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_READ), 0);
+	ret = memcmp(self->content + file_offs, ptr + buf_pg_offs, len);
+	ASSERT_EQ(dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_READ), 0);
+	ASSERT_EQ(munmap(ptr, aligned_len), 0);
 
 	return ret;
 }
@@ -204,7 +232,9 @@ static void clear_content(struct __test_metadata *_metadata,
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_NE(ptr, MAP_FAILED);
+	ASSERT_EQ(dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_WRITE), 0);
 	memset(ptr, 0, self->size);
+	ASSERT_EQ(dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_WRITE), 0);
 	ASSERT_EQ(munmap(ptr, self->size), 0);
 }
 
@@ -232,21 +262,176 @@ static void test_wrap(struct __test_metadata *_metadata,
 	close(wrapfd);
 }
 
-static void test_load(struct __test_metadata *_metadata,
-		      FIXTURE_DATA(wrapfd_tests) *self, int fd)
+static const void *memchr_inv(const void *start, int c, size_t bytes)
+{
+	const char *src = start;
+	char val = c;
+	int i;
+
+	for (i = 0; i < bytes; i++)
+		if (src[i] != val)
+			return &src[i];
+
+	return NULL;
+}
+
+static int poison_region(int wrapfd, void *start, int poison, size_t bytes)
+{
+	int ret = dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_WRITE);
+
+	if (ret)
+		return ret;
+
+	memset(start, poison, bytes);
+
+	return dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_WRITE);
+}
+
+static int verify_region_poison(int wrapfd, void *start, int poison, size_t bytes)
+{
+	int ret = dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_READ);
+	bool poisoned;
+
+	if (ret)
+		return ret;
+
+	poisoned = memchr_inv(start, poison, bytes) == NULL;
+
+	ret = dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_READ);
+	if (ret)
+		return ret;
+
+	return poisoned ? 0 : -1;
+}
+
+static int load_and_cmp(struct __test_metadata *_metadata, FIXTURE_DATA(wrapfd_tests) *self,
+			int wrapfd, unsigned long file_offs, unsigned long buf_offs,
+			unsigned long len)
+{
+	const char poison = 0xaa;
+	int ret;
+	char *head_ptr = NULL;
+	unsigned long tail_len, tail_aligned_offset, tail_map_len;
+	char *tail_page_ptr = NULL;
+	char *tail_ptr = NULL;
+
+	clear_content(_metadata, self, wrapfd);
+
+	ret = cmp_content(_metadata, self, wrapfd, 0, 0, self->size);
+	EXPECT_NE(ret, 0)
+		return ret;
+
+	if (buf_offs) {
+		head_ptr = mmap(NULL, buf_offs, PROT_READ | PROT_WRITE, MAP_SHARED, wrapfd, 0);
+		EXPECT_NE(head_ptr, MAP_FAILED)
+			return -1;
+
+		ret = poison_region(wrapfd, head_ptr, poison, buf_offs);
+		EXPECT_EQ(ret, 0)
+			goto out_unmap_head;
+	}
+
+	if ((buf_offs + len) < self->size) {
+		tail_len = self->size - buf_offs - len;
+		tail_aligned_offset = ALIGN_DOWN(buf_offs + len, self->page_size);
+		tail_map_len = self->size - tail_aligned_offset;
+		tail_page_ptr = mmap(NULL, tail_map_len, PROT_READ | PROT_WRITE, MAP_SHARED, wrapfd,
+				     tail_aligned_offset);
+		EXPECT_NE(tail_page_ptr, MAP_FAILED) {
+			ret = -1;
+			goto out_unmap_head;
+		}
+
+		tail_ptr = tail_page_ptr + offset_in_page(buf_offs + len, self->page_size);
+		ret = poison_region(wrapfd, tail_ptr, poison, tail_len);
+		EXPECT_EQ(ret, 0)
+			goto out_unmap_tail;
+	}
+
+	ret = wrapfd_load(wrapfd, self->fd, file_offs, buf_offs, len);
+	EXPECT_EQ(ret, 0)
+		goto out_unmap_tail;
+
+	if (head_ptr) {
+		ret = verify_region_poison(wrapfd, head_ptr, poison, buf_offs);
+		EXPECT_EQ(ret, 0)
+			goto out_unmap_tail;
+	}
+
+	ret = cmp_content(_metadata, self, wrapfd, file_offs, buf_offs, len);
+	EXPECT_EQ(ret, 0)
+		goto out_unmap_tail;
+
+	if (tail_ptr) {
+		ret = verify_region_poison(wrapfd, tail_ptr, poison, tail_len);
+		EXPECT_EQ(ret, 0);
+	}
+
+out_unmap_tail:
+	if (tail_page_ptr)
+		EXPECT_EQ(munmap(tail_page_ptr, tail_map_len), 0);
+out_unmap_head:
+	if (head_ptr)
+		EXPECT_EQ(munmap(head_ptr, buf_offs), 0);
+	return ret;
+}
+
+static int __test_loads(struct __test_metadata *_metadata,
+			FIXTURE_DATA(wrapfd_tests) *self, int wrapfd)
+{
+	int ret;
+
+	/* Test a sub-page load and ensure only the requested part was written to. */
+	ret = load_and_cmp(_metadata, self, wrapfd, 0, 0, self->page_size / 2);
+	EXPECT_EQ(ret, 0)
+		return ret;
+
+	ret = load_and_cmp(_metadata, self, wrapfd, self->page_size, self->page_size,
+			   self->size - self->page_size);
+	EXPECT_EQ(ret, 0)
+		return ret;
+
+	/* Save this one for last since subsequent tests run comparisons on the entire buffer. */
+	ret = load_and_cmp(_metadata, self, wrapfd, 0, 0, self->size);
+	EXPECT_EQ(ret, 0);
+
+	/* TODO: test more load offsets */
+
+	return ret;
+}
+
+static void test_load_mapped(struct __test_metadata *_metadata,
+			     FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
 	int wrapfd;
+	char *ptr;
 
-	/* Load the file content first */
 	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
 	ASSERT_TRUE(wrapfd >= 0);
 	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
 
-	clear_content(_metadata, self, wrapfd);
-	ASSERT_NE(cmp_content(_metadata, self, wrapfd), 0);
-	ASSERT_EQ(wrapfd_load(wrapfd, self->fd, 0, 0, self->size), 0);
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
-	/* TODO: test more load offsets */
+	/* Loading should still work while a buffer is mapped. */
+	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED, wrapfd, 0);
+	ASSERT_NE(ptr, MAP_FAILED);
+
+	ASSERT_EQ(__test_loads(_metadata, self, wrapfd), 0);
+
+	ASSERT_EQ(munmap(ptr, self->size), 0);
+
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
+	close(wrapfd);
+}
+
+static void test_load_unmapped(struct __test_metadata *_metadata,
+			       FIXTURE_DATA(wrapfd_tests) *self, int fd)
+{
+	int wrapfd;
+
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
+	ASSERT_TRUE(wrapfd >= 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
+
+	ASSERT_EQ(__test_loads(_metadata, self, wrapfd), 0);
 
 	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
 	close(wrapfd);
@@ -261,7 +446,7 @@ static void test_wrap_rdonly(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd >= 0);
 
 	/* Check content of the buffer */
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd, 0, 0, self->size), 0);
 
 	/* Try mapping as writable */
 	ASSERT_EQ(mmap(NULL, self->size, PROT_READ | PROT_WRITE,
@@ -281,22 +466,25 @@ static void test_wrap_rdwr(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd >= 0);
 
 	/* Check content of the buffer before modification */
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd, 0, 0, self->size), 0);
 
 	/* Modify buffer content */
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_NE(ptr, MAP_FAILED);
+	ASSERT_EQ(dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_RW), 0);
 	ptr[0]++;
 
 	/* Check content of the buffer after modification */
-	ASSERT_NE(cmp_content(_metadata, self, wrapfd), 0);
+	ASSERT_NE(cmp_content(_metadata, self, wrapfd, 0, 0, self->size), 0);
 
 	/* Restore buffer content */
 	ptr[0]--;
+	ASSERT_EQ(dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_RW), 0);
+
 
 	/* Confirm the final content */
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd, 0, 0, self->size), 0);
 
 	ASSERT_EQ(munmap(ptr, self->size), 0);
 
@@ -340,7 +528,7 @@ static void test_wrap_remap(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd >= 0);
 
 	/* Check content of the buffer before modification */
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd, 0, 0, self->size), 0);
 
 	/* Modify buffer content */
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -374,7 +562,7 @@ static void test_wrap_fork(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd >= 0);
 
 	/* Check content of the buffer before modification */
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd, 0, 0, self->size), 0);
 
 	/* Modify buffer content */
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
@@ -385,7 +573,9 @@ static void test_wrap_fork(struct __test_metadata *_metadata,
 	ASSERT_FALSE(pid < 0);
 	if (pid == 0) {
 		/* Check the content from the child */
+		ASSERT_EQ(dmabuf_sync_start(wrapfd, DMA_BUF_SYNC_READ), 0);
 		ASSERT_EQ(memcmp(self->content, ptr, self->size), 0);
+		ASSERT_EQ(dmabuf_sync_end(wrapfd, DMA_BUF_SYNC_READ), 0);
 		exit(EXIT_SUCCESS);
 	} else {
 		ASSERT_NE(wait(&status), -1);
@@ -411,8 +601,8 @@ static void test_dup(struct __test_metadata *_metadata,
 	ASSERT_TRUE(wrapfd2 >= 0);
 
 	/* Check content of the buffer using both fds */
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd), 0);
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd2), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd, 0, 0, self->size), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd2, 0, 0, self->size), 0);
 
 	close(wrapfd2);
 	close(wrapfd);
@@ -490,7 +680,7 @@ static void test_rewrap(struct __test_metadata *_metadata,
 		    state == WRAPFD_CONTENT_EMPTY);
 
 	/* Check rewrapped content */
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd2), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd2, 0, 0, self->size), 0);
 
 	/* Take ownership of the rewrapped buffer */
 	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd2), 0);
@@ -509,7 +699,7 @@ static void test_rewrap(struct __test_metadata *_metadata,
 	ASSERT_TRUE(ptr == MAP_FAILED && errno == EACCES);
 
 	/* Check rewrapped content */
-	ASSERT_EQ(cmp_content(_metadata, self, wrapfd3), 0);
+	ASSERT_EQ(cmp_content(_metadata, self, wrapfd3, 0, 0, self->size), 0);
 
 	/* Try mapping the original empty wrap file */
 	ptr = mmap(NULL, self->size, PROT_READ, MAP_SHARED,
@@ -696,11 +886,28 @@ static void test_ioctl(struct __test_metadata *_metadata,
 	close(wrapfd);
 }
 
+static void test_lseek(struct __test_metadata *_metadata,
+		       FIXTURE_DATA(wrapfd_tests) *self, int fd)
+{
+	int wrapfd;
+
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
+	ASSERT_TRUE(wrapfd >= 0);
+
+	/* Verify the dmabuf size is what we expect; dmabuf sizes are page aligned. */
+	ASSERT_EQ(lseek(wrapfd, 0, SEEK_END), ALIGN(self->size, self->page_size));
+	ASSERT_EQ(lseek(wrapfd, 0, SEEK_SET), 0);
+
+	close(wrapfd);
+}
+
+
 static void run_tests(struct __test_metadata *_metadata,
 		      FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
 	test_wrap(_metadata, self, fd);
-	test_load(_metadata, self, fd);
+	test_load_mapped(_metadata, self, fd);
+	test_load_unmapped(_metadata, self, fd);
 	test_wrap_rdonly(_metadata, self, fd);
 	test_wrap_rdwr(_metadata, self, fd);
 	test_remap_file_pages(_metadata, self, fd);
@@ -713,6 +920,7 @@ static void run_tests(struct __test_metadata *_metadata,
 	test_close_on_exec(_metadata, self, fd);
 	test_guests(_metadata, self, fd);
 	test_ioctl(_metadata, self, fd);
+	test_lseek(_metadata, self, fd);
 }
 
 TEST_F(wrapfd_tests, wrapfd_test_dmabuf_system_heap)
