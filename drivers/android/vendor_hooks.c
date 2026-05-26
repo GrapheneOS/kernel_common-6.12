@@ -770,3 +770,4 @@ EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_pick_swap_device_bypass);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_folio_end_writeback);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_folio_start_writeback);
 EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_snd_pcm_check_no_buffer);
+EXPORT_TRACEPOINT_SYMBOL_GPL(android_vh_override_exec_folio_order);
