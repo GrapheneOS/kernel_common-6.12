@@ -823,6 +823,9 @@ size_t kvm_iommu_map_pages(pkvm_handle_t domain_id,
 	    iova + size < iova || paddr + size < paddr)
 		return -E2BIG;
 
+	if (!IS_ALIGNED(iova | paddr, pgsize))
+		return -EINVAL;
+
 	if (domain_id == KVM_IOMMU_DOMAIN_IDMAP_ID)
 		return -EINVAL;
 
@@ -887,6 +890,9 @@ size_t kvm_iommu_unmap_pages(pkvm_handle_t domain_id, unsigned long iova,
 
 	if (__builtin_mul_overflow(pgsize, pgcount, &size) ||
 	    iova + size < iova)
+		return 0;
+
+	if (!IS_ALIGNED(iova, pgsize))
 		return 0;
 
 	if (domain_id == KVM_IOMMU_DOMAIN_IDMAP_ID)
@@ -984,6 +990,9 @@ size_t kvm_iommu_map_sg(pkvm_handle_t domain_id, unsigned long iova, struct kvm_
 
 		if (__builtin_mul_overflow(pgsize, pgcount, &size) ||
 		    iova + size < iova)
+			goto out_unpin_sg;
+
+		if (!IS_ALIGNED(iova | phys, pgsize))
 			goto out_unpin_sg;
 
 		ret = __pkvm_use_dma(phys, size, __get_vcpu());
