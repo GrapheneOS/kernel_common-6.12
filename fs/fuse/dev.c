@@ -2078,8 +2078,19 @@ static ssize_t fuse_dev_do_write(struct fuse_dev *fud,
 				req->args->out_args[1].value;
 		struct fuse_entry_bpf *feb = container_of(febo, struct fuse_entry_bpf, out);
 
-		if (febo->backing_action == FUSE_ACTION_REPLACE)
-			feb->backing_file = fget(febo->backing_fd);
+		if (febo->backing_action == FUSE_ACTION_REPLACE) {
+			struct file *bf = fget(febo->backing_fd);
+
+			if (bf) {
+				if (bf->f_inode->i_sb->s_magic == FUSE_SUPER_MAGIC ||
+				    bf->f_inode->i_sb->s_stack_depth >=
+						FILESYSTEM_MAX_STACK_DEPTH) {
+					fput(bf);
+					bf = ERR_PTR(-ELOOP);
+				}
+			}
+			feb->backing_file = bf;
+		}
 		if (febo->bpf_action == FUSE_ACTION_REPLACE)
 			feb->bpf_file = fget(febo->bpf_fd);
 	}
