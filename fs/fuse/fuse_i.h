@@ -2234,6 +2234,25 @@ static inline int fuse_bpf_run(struct bpf_prog *prog, struct fuse_bpf_args *fba)
 	fer;								\
 })
 
+static inline bool fuse_bpf_backing_allowed(struct super_block *sb)
+{
+	if (sb && sb->s_root) {
+		struct inode *root_inode = d_inode(sb->s_root);
+
+		if (root_inode) {
+			struct fuse_inode *fi = get_fuse_inode(root_inode);
+
+			return fi && fi->backing_inode;
+		}
+	}
+	return false;
+}
+
+#else /* CONFIG_FUSE_BPF */
+static inline bool fuse_bpf_backing_allowed(struct super_block *sb)
+{
+	return false;
+}
 #endif /* CONFIG_FUSE_BPF */
 
 #endif /* _FS_FUSE_I_H */
