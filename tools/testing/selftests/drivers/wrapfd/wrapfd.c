@@ -204,6 +204,7 @@ FIXTURE_SETUP(wrapfd_tests)
 FIXTURE_TEARDOWN(wrapfd_tests)
 {
 	close(self->fd);
+	free(self->content);
 	close(self->dev_fd);
 }
 
