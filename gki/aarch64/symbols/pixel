@@ -2882,6 +2882,7 @@
   __traceiter_android_vh_ra_alloc_retry
   __traceiter_android_vh_resume_end
   __traceiter_android_vh_rmqueue
+  __traceiter_android_vh_rust_binder_looper_entry
   __traceiter_android_vh_rust_binder_restore_priority
   __traceiter_android_vh_rust_binder_set_priority
   __traceiter_android_vh_scheduler_tick
@@ -3047,6 +3048,7 @@
   __tracepoint_android_vh_ra_alloc_retry
   __tracepoint_android_vh_resume_end
   __tracepoint_android_vh_rmqueue
+  __tracepoint_android_vh_rust_binder_looper_entry
   __tracepoint_android_vh_rust_binder_restore_priority
   __tracepoint_android_vh_rust_binder_set_priority
   __tracepoint_android_vh_scheduler_tick
