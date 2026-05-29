@@ -761,6 +761,9 @@ static void test_empty(struct __test_metadata *_metadata,
 		   wrapfd, 0);
 	ASSERT_TRUE(ptr == MAP_FAILED && errno == ENOENT);
 
+	/* Try loading into an empty wrap file. */
+	ASSERT_TRUE(wrapfd_load(wrapfd, self->fd, 0, 0, self->size) < 0 && errno == ENOENT);
+
 	/* Release buffer ownership */
 	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
 
