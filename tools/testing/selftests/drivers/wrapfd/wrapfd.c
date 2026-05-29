@@ -172,6 +172,9 @@ FIXTURE_SETUP(wrapfd_tests)
 	EXPECT_EQ(getuid(), 0)
 		SKIP(return, "Skipping all tests as non-root");
 
+	EXPECT_EQ(access("/dev/wrapfd", F_OK), 0)
+		SKIP(return, "Skipping all tests; kernel lacks wrapfd support");
+
 	self->page_size = (size_t)sysconf(_SC_PAGESIZE);
 	/* Intentionally make the file size page unaligned */
 	self->size = self->page_size * FILE_SZ_PAGES - self->page_size / 2;
