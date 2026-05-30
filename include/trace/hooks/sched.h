@@ -473,6 +473,9 @@ DECLARE_HOOK(android_vh_scx_task_switch_finish,
 DECLARE_HOOK(android_vh_scx_task_can_run_on,
 	TP_PROTO(bool *disallow, struct task_struct *p, struct rq *rq),
 	TP_ARGS(disallow, p, rq));
+DECLARE_HOOK(android_rvh_check_class_changing,
+	TP_PROTO(struct rq *rq, struct task_struct *p, const struct sched_class *prev_class),
+	TP_ARGS(rq, p, prev_class));
 
 struct scx_exit_info;
 DECLARE_HOOK(android_vh_scx_exit_on_abnormal,

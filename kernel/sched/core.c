@@ -2311,6 +2311,7 @@ void check_class_changing(struct rq *rq, struct task_struct *p,
 {
 	if (prev_class != p->sched_class && p->sched_class->switching_to)
 		p->sched_class->switching_to(rq, p);
+	trace_android_rvh_check_class_changing(rq, p, prev_class);
 }
 
 /*
