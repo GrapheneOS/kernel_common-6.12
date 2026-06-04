@@ -964,10 +964,12 @@
   drm_kms_helper_poll_enable
   drm_kms_helper_poll_fini
   drm_kms_helper_poll_init
+  __drmm_add_action_or_reset
   drm_match_cea_mode
   drmm_connector_hdmi_init
   drmm_connector_init
   __drmm_crtc_alloc_with_planes
+  drmm_encoder_init
   drmm_kmalloc
   drmm_mode_config_init
   drm_mode_config_cleanup
@@ -996,6 +998,7 @@
   drm_mode_sort
   drm_mode_vrefresh
   __drmm_universal_plane_alloc
+  drmm_writeback_connector_init
   drm_object_attach_property
   drm_object_property_set_value
   drm_of_find_panel_or_bridge
@@ -1226,6 +1229,7 @@
   gpiod_direction_output
   gpiod_direction_output_raw
   gpio_device_get_desc
+  gpiod_get_direction
   gpiod_get_raw_value
   gpiod_get_raw_value_cansleep
   gpiod_get_value
@@ -3273,6 +3277,7 @@
   ufshcd_resume_complete
   ufshcd_runtime_resume
   ufshcd_runtime_suspend
+  ufshcd_send_uic_cmd
   ufshcd_suspend_prepare
   ufshcd_system_resume
   ufshcd_system_suspend
