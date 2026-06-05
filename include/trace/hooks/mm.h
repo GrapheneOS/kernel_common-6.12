@@ -37,6 +37,9 @@ DECLARE_RESTRICTED_HOOK(android_rvh_try_alloc_pages_gfp,
 DECLARE_RESTRICTED_HOOK(android_rvh_do_swap_page_relax,
 			TP_PROTO(swp_entry_t entry, bool *bypass),
 			TP_ARGS(entry, bypass), 1);
+DECLARE_RESTRICTED_HOOK(android_rvh_do_swap_page_start,
+			TP_PROTO(swp_entry_t entry),
+			TP_ARGS(entry), 1);
 DECLARE_RESTRICTED_HOOK(android_rvh_shmem_suitable_orders,
 			TP_PROTO(struct inode *inode, pgoff_t index,
 				unsigned long orders, unsigned long *suitable_orders),

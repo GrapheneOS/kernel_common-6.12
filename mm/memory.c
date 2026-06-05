@@ -4339,6 +4339,7 @@ vm_fault_t do_swap_page(struct vm_fault *vmf)
 					remove_wait_queue(&swapcache_wq, &wait);
 					goto out_page;
 				}
+				trace_android_rvh_do_swap_page_start(entry);
 				need_clear_cache = true;
 
 				mem_cgroup_swapin_uncharge_swap(entry, nr_pages);
