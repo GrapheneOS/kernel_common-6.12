@@ -244,18 +244,21 @@ int fuse_create_open_backing(
 	backing_dentry = lookup_one_len(fa->in_args[1].value,
 					dir_fuse_dentry->backing_path.dentry,
 					strlen(fa->in_args[1].value));
-	inode_unlock(dir_fuse_inode->backing_inode);
 
-	if (IS_ERR(backing_dentry))
+	if (IS_ERR(backing_dentry)) {
+		inode_unlock(dir_fuse_inode->backing_inode);
 		return PTR_ERR(backing_dentry);
+	}
 
 	if (d_really_is_positive(backing_dentry)) {
+		inode_unlock(dir_fuse_inode->backing_inode);
 		err = -EIO;
 		goto out;
 	}
 
 	err = vfs_create(&nop_mnt_idmap, dir_fuse_inode->backing_inode,
 			 backing_dentry, fci->mode, true);
+	inode_unlock(dir_fuse_inode->backing_inode);
 	if (err)
 		goto out;
 
@@ -1442,7 +1445,7 @@ int fuse_mknod_backing(
 		 */
 		goto out;
 	}
-	inode = fuse_iget_backing(dir->i_sb, fuse_inode->nodeid, backing_inode);
+	inode = fuse_iget_backing(dir->i_sb, 0, d_inode(backing_path.dentry));
 	if (IS_ERR(inode)) {
 		err = PTR_ERR(inode);
 		goto out;
@@ -1570,18 +1573,32 @@ int fuse_rmdir_backing(
 	struct path backing_path = {};
 	struct dentry *backing_parent_dentry;
 	struct inode *backing_inode;
-
-	/* TODO Actually deal with changing the backing entry in rmdir */
+	struct dentry *revalidated;
+	const char *name = fa->in_args[0].value;
 	get_fuse_backing_path(entry, &backing_path);
 	if (!backing_path.dentry)
 		return -EBADF;
 
-	/* TODO Not sure if we should reverify like overlayfs, or get inode from d_parent */
 	backing_parent_dentry = dget_parent(backing_path.dentry);
 	backing_inode = d_inode(backing_parent_dentry);
 
 	inode_lock_nested(backing_inode, I_MUTEX_PARENT);
+	/* Re-validate the backing entry under the parent lock to prevent races */
+	revalidated = lookup_one_len(name, backing_parent_dentry, strlen(name));
+	if (IS_ERR(revalidated)) {
+		err = PTR_ERR(revalidated);
+		goto out_unlock;
+	}
+	/* If the backing entry has changed or was already deleted, abort safely */
+	if (revalidated != backing_path.dentry) {
+		dput(revalidated);
+		err = -ENOENT;
+		goto out_unlock;
+	}
+	dput(revalidated);
+
 	err = vfs_rmdir(&nop_mnt_idmap, backing_inode, backing_path.dentry);
+out_unlock:
 	inode_unlock(backing_inode);
 
 	dput(backing_parent_dentry);
@@ -1793,18 +1810,32 @@ int fuse_unlink_backing(
 	struct path backing_path = {};
 	struct dentry *backing_parent_dentry;
 	struct inode *backing_inode;
-
-	/* TODO Actually deal with changing the backing entry in unlink */
+	struct dentry *revalidated;
+	const char *name = fa->in_args[0].value;
 	get_fuse_backing_path(entry, &backing_path);
 	if (!backing_path.dentry)
 		return -EBADF;
 
-	/* TODO Not sure if we should reverify like overlayfs, or get inode from d_parent */
 	backing_parent_dentry = dget_parent(backing_path.dentry);
 	backing_inode = d_inode(backing_parent_dentry);
 
 	inode_lock_nested(backing_inode, I_MUTEX_PARENT);
+	/* Re-validate the backing entry under the parent lock to prevent races */
+	revalidated = lookup_one_len(name, backing_parent_dentry, strlen(name));
+	if (IS_ERR(revalidated)) {
+		err = PTR_ERR(revalidated);
+		goto out_unlock;
+	}
+	/* If the backing entry has changed or was already deleted, abort safely */
+	if (revalidated != backing_path.dentry) {
+		dput(revalidated);
+		err = -ENOENT;
+		goto out_unlock;
+	}
+	dput(revalidated);
+
 	err = vfs_unlink(&nop_mnt_idmap, backing_inode, backing_path.dentry, NULL);
+out_unlock:
 	inode_unlock(backing_inode);
 
 	dput(backing_parent_dentry);
@@ -1882,7 +1913,7 @@ int fuse_link_backing(struct fuse_bpf_args *fa, struct dentry *entry,
 		goto out;
 	}
 
-	fuse_new_inode = fuse_iget_backing(dir->i_sb, fuse_dir_inode->nodeid, backing_dir_inode);
+	fuse_new_inode = fuse_iget_backing(dir->i_sb, 0, d_inode(backing_new_path.dentry));
 	if (IS_ERR(fuse_new_inode)) {
 		err = PTR_ERR(fuse_new_inode);
 		goto out;
@@ -2273,7 +2304,7 @@ int fuse_symlink_backing(
 		 */
 		goto out;
 	}
-	inode = fuse_iget_backing(dir->i_sb, fuse_inode->nodeid, backing_inode);
+	inode = fuse_iget_backing(dir->i_sb, 0, d_inode(backing_path.dentry));
 	if (IS_ERR(inode)) {
 		err = PTR_ERR(inode);
 		goto out;

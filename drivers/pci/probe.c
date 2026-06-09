@@ -2496,6 +2496,9 @@ static struct platform_device *pci_pwrctrl_create_device(struct pci_bus *bus, in
 	struct platform_device *pdev;
 	struct device_node *np;
 
+	if (brcm_pcie_pwrctrl_quirk(dev_of_node(&bus->dev)))
+		return NULL;
+
 	np = of_pci_find_child_device(dev_of_node(&bus->dev), devfn);
 	if (!np)
 		return NULL;

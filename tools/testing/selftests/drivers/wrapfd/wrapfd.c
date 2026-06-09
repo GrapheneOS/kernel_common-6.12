@@ -31,6 +31,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
+#include <sys/syscall.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <linux/align.h>
@@ -112,12 +113,12 @@ static inline int wrapfd_prohibit_guests(int wrapfd)
 }
 
 /* test utility functions */
-static int dmabuf_heap_alloc(int heap_fd, size_t len)
+static int dmabuf_heap_alloc(int heap_fd, size_t len, int fd_flags)
 {
 	struct dma_heap_allocation_data data = {
 		.len = len,
 		.fd = 0,
-		.fd_flags = O_RDWR | O_CLOEXEC,
+		.fd_flags = fd_flags | O_CLOEXEC,
 		.heap_flags = 0,
 	};
 	int ret = ioctl(heap_fd, DMA_HEAP_IOCTL_ALLOC, &data);
@@ -171,6 +172,9 @@ FIXTURE_SETUP(wrapfd_tests)
 	EXPECT_EQ(getuid(), 0)
 		SKIP(return, "Skipping all tests as non-root");
 
+	EXPECT_EQ(access("/dev/wrapfd", F_OK), 0)
+		SKIP(return, "Skipping all tests; kernel lacks wrapfd support");
+
 	self->page_size = (size_t)sysconf(_SC_PAGESIZE);
 	/* Intentionally make the file size page unaligned */
 	self->size = self->page_size * FILE_SZ_PAGES - self->page_size / 2;
@@ -200,6 +204,7 @@ FIXTURE_SETUP(wrapfd_tests)
 FIXTURE_TEARDOWN(wrapfd_tests)
 {
 	close(self->fd);
+	free(self->content);
 	close(self->dev_fd);
 }
 
@@ -258,6 +263,24 @@ static void test_wrap(struct __test_metadata *_metadata,
 	/* Ensure that the size of the wrapfd matches the size of the underlying buffer. */
 	ASSERT_EQ(fstat(wrapfd, &sb), 0);
 	ASSERT_EQ(sb.st_size, ALIGN(self->size, self->page_size));
+
+	close(wrapfd);
+}
+
+static void test_wrap_rdonly_file(struct __test_metadata *_metadata,
+				  FIXTURE_DATA(wrapfd_tests) *self, int fd)
+{
+	int wrapfd;
+	unsigned int state;
+
+	/* Wrapping a read-only file in a read/write wrap should fail. */
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ | PROT_WRITE);
+	ASSERT_NE(wrapfd, 0);
+
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ);
+	ASSERT_TRUE(wrapfd >= 0);
+	ASSERT_EQ(wrapfd_get_state(wrapfd, &state), 0);
+	ASSERT_EQ(state, WRAPFD_CONTENT_RDONLY);
 
 	close(wrapfd);
 }
@@ -437,6 +460,21 @@ static void test_load_unmapped(struct __test_metadata *_metadata,
 	close(wrapfd);
 }
 
+static void test_load_rdonly_file(struct __test_metadata *_metadata,
+				  FIXTURE_DATA(wrapfd_tests) *self, int fd)
+{
+	int wrapfd;
+
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ);
+	ASSERT_TRUE(wrapfd >= 0);
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
+
+	ASSERT_TRUE(wrapfd_load(wrapfd, self->fd, 0, 0, self->size) < 0 && errno == EACCES);
+
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
+	close(wrapfd);
+}
+
 static void test_wrap_rdonly(struct __test_metadata *_metadata,
 			     FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
@@ -490,6 +528,14 @@ static void test_wrap_rdwr(struct __test_metadata *_metadata,
 
 	close(wrapfd);
 }
+
+/* Bionic's implementation of libc does not have a wrapper for remap_file_pages(). */
+#ifdef __ANDROID__
+static int remap_file_pages(void *addr, size_t size, int prot, size_t pgoff, int flags)
+{
+	return syscall(__NR_remap_file_pages, addr, size, prot, pgoff, flags);
+}
+#endif
 
 static void test_remap_file_pages(struct __test_metadata *_metadata,
 				  FIXTURE_DATA(wrapfd_tests) *self, int fd)
@@ -715,6 +761,34 @@ static void test_rewrap(struct __test_metadata *_metadata,
 	close(wrapfd);
 }
 
+static void test_rewrap_rdonly_file(struct __test_metadata *_metadata,
+				    FIXTURE_DATA(wrapfd_tests) *self, int fd)
+{
+	int wrapfd;
+	unsigned int state;
+	char *ptr;
+
+	wrapfd = wrapfd_wrap(self->dev_fd, fd, PROT_READ);
+	ASSERT_TRUE(wrapfd >= 0);
+
+	ASSERT_EQ(wrapfd_get_state(wrapfd, &state), 0);
+	ASSERT_EQ(state, WRAPFD_CONTENT_RDONLY);
+
+	/* Take buffer ownership */
+	ASSERT_EQ(wrapfd_acquire_ownership(wrapfd), 0);
+
+	/* Rewrapping the buffer as writable should fail. */
+	ASSERT_TRUE(wrapfd_rewrap(wrapfd, PROT_WRITE) < 0 && errno == EACCES);
+
+	/* Mapping the buffer as writable should also fail. */
+	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED, wrapfd, 0);
+	ASSERT_TRUE(ptr == MAP_FAILED && errno == EACCES);
+
+	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
+
+	close(wrapfd);
+}
+
 static void test_empty(struct __test_metadata *_metadata,
 		       FIXTURE_DATA(wrapfd_tests) *self, int fd)
 {
@@ -747,6 +821,9 @@ static void test_empty(struct __test_metadata *_metadata,
 	ptr = mmap(NULL, self->size, PROT_READ | PROT_WRITE, MAP_SHARED,
 		   wrapfd, 0);
 	ASSERT_TRUE(ptr == MAP_FAILED && errno == ENOENT);
+
+	/* Try loading into an empty wrap file. */
+	ASSERT_TRUE(wrapfd_load(wrapfd, self->fd, 0, 0, self->size) < 0 && errno == ENOENT);
 
 	/* Release buffer ownership */
 	ASSERT_EQ(wrapfd_release_ownership(wrapfd), 0);
@@ -903,11 +980,13 @@ static void test_lseek(struct __test_metadata *_metadata,
 
 
 static void run_tests(struct __test_metadata *_metadata,
-		      FIXTURE_DATA(wrapfd_tests) *self, int fd)
+		      FIXTURE_DATA(wrapfd_tests) *self, int fd, int rdonly_fd)
 {
 	test_wrap(_metadata, self, fd);
+	test_wrap_rdonly_file(_metadata, self, rdonly_fd);
 	test_load_mapped(_metadata, self, fd);
 	test_load_unmapped(_metadata, self, fd);
+	test_load_rdonly_file(_metadata, self, rdonly_fd);
 	test_wrap_rdonly(_metadata, self, fd);
 	test_wrap_rdwr(_metadata, self, fd);
 	test_remap_file_pages(_metadata, self, fd);
@@ -916,6 +995,7 @@ static void run_tests(struct __test_metadata *_metadata,
 	test_dup(_metadata, self, fd);
 	test_owner(_metadata, self, fd);
 	test_rewrap(_metadata, self, fd);
+	test_rewrap_rdonly_file(_metadata, self, rdonly_fd);
 	test_empty(_metadata, self, fd);
 	test_close_on_exec(_metadata, self, fd);
 	test_guests(_metadata, self, fd);
@@ -926,30 +1006,38 @@ static void run_tests(struct __test_metadata *_metadata,
 TEST_F(wrapfd_tests, wrapfd_test_dmabuf_system_heap)
 {
 	int dmabuf_fd;
+	int rdonly_dmabuf_fd;
 	int heap_fd;
 
 	heap_fd = open("/dev/dma_heap/system", O_RDONLY);
 	ASSERT_TRUE(heap_fd >= 0);
-	dmabuf_fd = dmabuf_heap_alloc(heap_fd, self->size);
+	dmabuf_fd = dmabuf_heap_alloc(heap_fd, self->size, O_RDWR);
 	ASSERT_TRUE(dmabuf_fd >= 0);
+	rdonly_dmabuf_fd = dmabuf_heap_alloc(heap_fd, self->size, O_RDONLY);
+	ASSERT_TRUE(rdonly_dmabuf_fd >= 0);
 	close(heap_fd);
-	run_tests(_metadata, self, dmabuf_fd);
+	run_tests(_metadata, self, dmabuf_fd, rdonly_dmabuf_fd);
+	close(rdonly_dmabuf_fd);
 	close(dmabuf_fd);
 }
 
 TEST_F(wrapfd_tests, wrapfd_test_dmabuf_cma_heap)
 {
 	int dmabuf_fd;
+	int rdonly_dmabuf_fd;
 	int heap_fd;
 
 	heap_fd = open("/dev/dma_heap/default_cma_region", O_RDONLY);
 	if (heap_fd < 0 && errno == ENOENT)
 		SKIP(return, "Skipping CMA tests as the CMA heap is missing");
 	ASSERT_TRUE(heap_fd >= 0);
-	dmabuf_fd = dmabuf_heap_alloc(heap_fd, self->size);
+	dmabuf_fd = dmabuf_heap_alloc(heap_fd, self->size, O_RDWR);
 	ASSERT_TRUE(dmabuf_fd >= 0);
+	rdonly_dmabuf_fd = dmabuf_heap_alloc(heap_fd, self->size, O_RDONLY);
+	ASSERT_TRUE(rdonly_dmabuf_fd >= 0);
 	close(heap_fd);
-	run_tests(_metadata, self, dmabuf_fd);
+	run_tests(_metadata, self, dmabuf_fd, rdonly_dmabuf_fd);
+	close(rdonly_dmabuf_fd);
 	close(dmabuf_fd);
 }
 

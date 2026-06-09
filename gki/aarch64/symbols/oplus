@@ -307,6 +307,7 @@
   __traceiter_android_vh_scx_enabled
   __traceiter_android_vh_scx_set_cpus_allowed
   __traceiter_android_vh_scx_task_can_run_on
+  __traceiter_android_rvh_check_class_changing
   __traceiter_android_vh_scx_exit_on_abnormal
   __traceiter_android_vh_scx_task_switch_finish
   __traceiter_android_vh_cgroup_set_task
@@ -461,6 +462,7 @@
   __tracepoint_android_vh_scx_enabled
   __tracepoint_android_vh_scx_set_cpus_allowed
   __tracepoint_android_vh_scx_task_can_run_on
+  __tracepoint_android_rvh_check_class_changing
   __tracepoint_android_vh_scx_exit_on_abnormal
   __tracepoint_android_vh_scx_task_switch_finish
   __tracepoint_android_vh_cgroup_set_task

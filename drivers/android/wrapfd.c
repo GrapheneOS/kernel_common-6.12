@@ -208,6 +208,9 @@ dmabuf_content_make_writable(struct wrap_content *content, bool writable)
 
 	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
 				      content);
+	if (writable && !(dmabuf_content->dmabuf->file->f_mode & FMODE_WRITE))
+		return ERR_PTR(-EACCES);
+
 	dmabuf_content->writable = writable;
 
 	return content;
@@ -220,7 +223,7 @@ static bool dmabuf_content_is_writable(struct wrap_content *content)
 	dmabuf_content = container_of(content, struct wrap_content_dmabuf,
 				      content);
 
-	return dmabuf_content->writable;
+	return dmabuf_content->writable && !!(dmabuf_content->dmabuf->file->f_mode & FMODE_WRITE);
 }
 
 static loff_t dmabuf_content_llseek(struct wrap_content *content, loff_t offs, int whence)
@@ -795,6 +798,7 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 			  struct wrapfd_load __user *user_wrapfd_load)
 {
 	struct wrapfd_load wrapfd_load;
+	struct wrap_content *content;
 	struct file *file;
 	loff_t file_offs;
 	loff_t buf_offs;
@@ -863,8 +867,19 @@ static int wrap_file_load(struct wrap_ctx *ctx,
 	if (ret)
 		goto put_file;
 
-	ret = ctx->content->ops->load(ctx->content, file,
-				      file_offs, buf_offs, len);
+	content = ctx->content;
+	if (!content) {
+		ret = -ENOENT;
+		goto put_ctx;
+	}
+
+	if (content->ops->is_writable && !content->ops->is_writable(content)) {
+		ret = -EACCES;
+		goto put_ctx;
+	}
+
+	ret = content->ops->load(content, file, file_offs, buf_offs, len);
+put_ctx:
 	spin_lock(&ctx->lock);
 	context_unuse(ctx);
 	spin_unlock(&ctx->lock);
@@ -906,8 +921,8 @@ static int wrap_file_rewrap(struct wrap_ctx *ctx,
 
 	new_content = content->ops->make_writable(content,
 				(wrapfd_rewrap.prot & PROT_WRITE) != 0);
-	if (!new_content) {
-		ret = -ENOMEM;
+	if (IS_ERR(new_content)) {
+		ret = PTR_ERR(new_content);
 		goto restore_content;
 	}
 	new_content->close_on_exec = content->close_on_exec;

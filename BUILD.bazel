@@ -2964,6 +2964,26 @@ cc_binary_with_abi(
     ],
 )
 
+cc_binary_with_abi(
+    name = "kselftest_wrapfd_test",
+    srcs = [
+        "include/uapi/linux/wrapfd.h",
+        "tools/include/linux/align.h",
+        "tools/include/uapi/linux/const.h",
+        "tools/testing/selftests/drivers/wrapfd/wrapfd.c",
+    ],
+    copts = _KSELFTEST_COPTS,
+    includes = [
+        "include/uapi",
+        "tools/include",
+        "tools/testing/selftests",
+    ],
+    linkopts = ["-static"],
+    path_prefix = _KSELFTEST_DIR,
+    visibility = ["//visibility:private"],
+    deps = [":kselftest_headers_lib"],
+)
+
 pkg_files(
     name = "kselftest_config_x86_64",
     srcs = ["tools/testing/selftests/android/config_x86_64.xml"],
@@ -3038,6 +3058,7 @@ pkg_filegroup(
         ":kselftest_vdso_vdso_test_clock_getres_x86_64",
         ":kselftest_vdso_vdso_test_getcpu_x86_64",
         ":kselftest_vdso_vdso_test_gettimeofday_x86_64",
+        ":kselftest_wrapfd_test_x86_64",
         ":kselftest_x86_check_initial_reg_state_x86_64",
         ":kselftest_x86_ldt_gdt_x86_64",
         ":kselftest_x86_ptrace_syscall_x86_64",
@@ -3239,6 +3260,7 @@ pkg_filegroup(
         ":kselftest_vdso_vdso_test_clock_getres_arm64",
         ":kselftest_vdso_vdso_test_getcpu_arm64",
         ":kselftest_vdso_vdso_test_gettimeofday_arm64",
+        ":kselftest_wrapfd_test_arm64",
     ],
     visibility = ["//visibility:private"],
 )

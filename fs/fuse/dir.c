@@ -169,12 +169,18 @@ static void fuse_lookup_init(struct fuse_conn *fc, struct fuse_args *args,
 	args->in_numargs = 1;
 	args->in_args[0].size = name->len + 1;
 	args->in_args[0].value = name->name;
+#ifdef CONFIG_FUSE_BPF
 	args->out_argvar = true;
 	args->out_numargs = 2;
 	args->out_args[0].size = sizeof(struct fuse_entry_out);
 	args->out_args[0].value = outarg;
 	args->out_args[1].size = sizeof(struct fuse_entry_bpf_out);
 	args->out_args[1].value = bpf_outarg;
+#else
+	args->out_args[0].size = sizeof(struct fuse_entry_out);
+	args->out_args[0].value = outarg;
+	args->out_numargs = 1;
+#endif
 }
 
 #ifdef CONFIG_FUSE_BPF
@@ -303,7 +309,7 @@ static int fuse_dentry_revalidate(struct dentry *entry, unsigned int flags)
 			fi = get_fuse_inode(inode);
 			if (outarg.nodeid != get_node_id(inode) ||
 #ifdef CONFIG_FUSE_BPF
-			    (ret == sizeof(bpf_arg.out) &&
+			    (fuse_bpf_backing_allowed(entry->d_sb) && ret == sizeof(bpf_arg.out) &&
 					    backing_data_changed(fi, entry, &bpf_arg)) ||
 #endif
 			    (bool) IS_AUTOMOUNT(inode) != (bool) (outarg.attr.flags & FUSE_ATTR_SUBMOUNT)) {
@@ -526,7 +532,7 @@ int fuse_lookup_name(struct super_block *sb, u64 nodeid, const struct qstr *name
 	err = fuse_simple_request(fm, &args);
 
 #ifdef CONFIG_FUSE_BPF
-	if (err == sizeof(bpf_arg.out)) {
+	if (fuse_bpf_backing_allowed(sb) && err == sizeof(bpf_arg.out)) {
 		/* TODO Make sure this handles invalid handles */
 		struct file *backing_file;
 		struct inode *backing_inode;
@@ -564,6 +570,12 @@ int fuse_lookup_name(struct super_block *sb, u64 nodeid, const struct qstr *name
 	} else
 #endif
 	{
+#ifdef CONFIG_FUSE_BPF
+		if (err == sizeof(bpf_arg.out)) {
+			/* BPF not allowed, ignore BPF part and treat as standard success */
+			err = 0;
+		}
+#endif
 		/* Zero nodeid is same as -ENOENT, but with valid timeout */
 		if (err || !outarg->nodeid)
 			goto out_put_forget;

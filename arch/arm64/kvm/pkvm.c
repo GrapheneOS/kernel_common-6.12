@@ -1158,7 +1158,7 @@ static int pkvm_reloc_imported_symbol(struct pkvm_el2_module *importer,
 {
 	u32 insn = le32_to_cpu(*sym->rela_pos);
 	unsigned long hyp_orig, hyp_dst;
-	u64 imm, offset;
+	s64 offset;
 
 	if (!within_pkvm_module_section(&importer->text,
 					(unsigned long)sym->rela_pos)) {
@@ -1177,27 +1177,17 @@ static int pkvm_reloc_imported_symbol(struct pkvm_el2_module *importer,
 
 	hyp_dst = __pkvm_el2_mod_va(exporter, (void *)sym_addr);
 	hyp_orig = __pkvm_el2_mod_va(importer, (void *)sym->rela_pos);
-
-	/*
-	 * Module hyp VAs are allocated going upward. The exporter being loaded
-	 * before the importer, the destination address MUST be lower than the
-	 * origin.
-	 */
-	if (WARN_ON(hyp_dst > hyp_orig))
-		return -EINVAL;
-
-	offset = hyp_orig - hyp_dst;
+	offset = (s64)hyp_dst - (s64)hyp_orig;
 
 	/* imm26 is 2's complement and equals to offset / 4 */
 	offset >>= 2;
-	if (offset > BIT(25)) {
-		pr_warn("Exported symbol %s is too far for the relocation in module %s\n",
-			sym->name, pkvm_el2_mod_to_module(importer)->name);
+	if (offset < -(s64)BIT(25) || offset >= (s64)BIT(25)) {
+		pr_warn("pKVM symbol %s@0x%lx is too far to branch from 0x%lx [%s]\n",
+			sym->name, hyp_dst, hyp_orig, pkvm_el2_mod_to_module(importer)->name);
 		return -ERANGE;
 	}
 
-	imm = -offset;
-	insn = aarch64_insn_encode_immediate(AARCH64_INSN_IMM_26, insn, imm);
+	insn = aarch64_insn_encode_immediate(AARCH64_INSN_IMM_26, insn, offset);
 
 	return aarch64_insn_patch_text_nosync((void *)sym->rela_pos, insn);
 }
@@ -1874,6 +1864,9 @@ int pkvm_pgtable_stage2_flush(struct kvm_pgtable *pgt, u64 addr, u64 size)
 {
 	struct kvm *kvm = kvm_s2_mmu_to_kvm(pgt->mmu);
 	struct pkvm_mapping *mapping;
+
+	if (cpus_have_final_cap(ARM64_HAS_STAGE2_FWB) && !(pgt->flags & KVM_PGTABLE_S2_NOFWB))
+		return 0;
 
 	lockdep_assert_held(&kvm->mmu_lock);
 	for_each_mapping_in_range_safe(pgt, addr, addr + size, mapping)
