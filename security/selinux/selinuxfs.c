@@ -572,6 +572,7 @@ static int resolve_context_types(struct selinux_load_state *lstate, struct conte
 	RESOLVE_TYPE(privapp_data_file);
 	RESOLVE_TYPE(webview_zygote);
 	RESOLVE_TYPE(zygote);
+	RESOLVE_TYPE(zygote_next);
 
 #undef RESOLVE_TYPE
 
