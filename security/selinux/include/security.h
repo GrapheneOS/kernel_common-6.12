@@ -98,6 +98,7 @@ struct context_types {
 	u32 privapp_data_file;
 	u32 webview_zygote;
 	u32 zygote;
+	u32 zygote_next;
 };
 
 struct selinux_state {
