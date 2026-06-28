@@ -7774,7 +7774,9 @@ int tcpm_update_sink_capabilities(struct tcpm_port *port, const u32 *pdo, unsign
 {
 	// reuse tcpm_update_sink_capabilities to avoid changing ABI
 	if (nr_pdo == DO_NOT_IGNORE_ALT_MODES || nr_pdo == IGNORE_ALT_MODES) {
+		mutex_lock(&port->lock);
 		port->ignore_alt_modes = nr_pdo == IGNORE_ALT_MODES;
+		mutex_unlock(&port->lock);
 		return 0;
 	}
 
