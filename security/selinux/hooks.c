@@ -6549,6 +6549,7 @@ static int selinux_lsm_getattr(unsigned int attr, struct task_struct *p,
 	const struct task_security_struct *tsec;
 	int error;
 	u32 sid;
+	u32 context_type;
 	u64 flags;
 	u32 len;
 
@@ -6566,6 +6567,7 @@ static int selinux_lsm_getattr(unsigned int attr, struct task_struct *p,
 		break;
 	case LSM_ATTR_PREV:
 		sid = tsec->osid;
+		flags = tsec->flags;
 		break;
 	case LSM_ATTR_EXEC:
 		sid = tsec->exec_sid;
@@ -6598,6 +6600,19 @@ static int selinux_lsm_getattr(unsigned int attr, struct task_struct *p,
 		len = snprintf(buf, len, "%llx", flags);
 		*value = buf;
 		return (int) len;
+	}
+
+	if (attr == LSM_ATTR_PREV &&
+	    flags & TSEC_FLAG_OVERRIDE_PREV_SELINUX_CTX_TO_INIT &&
+	    security_sid_to_context_type(sid, &context_type) == 0 &&
+	    context_type == selinux_state.types.zygote)
+	{
+		char *res = kstrdup("u:r:init:s0", GFP_KERNEL);
+		if (!res) {
+			return -ENOMEM;
+		}
+		*value = res;
+		return strlen(res) + 1; // NUL terminator is intentionally included
 	}
 
 	if (sid == SECSID_NULL) {
