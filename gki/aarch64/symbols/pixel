@@ -14,7 +14,6 @@
   alarm_cancel
   alarm_init
   alarm_start_relative
-  arch_touch_nmi_watchdog
   alarmtimer_get_rtcdev
   alarm_try_to_cancel
   alloc_chrdev_region
@@ -41,6 +40,7 @@
   __arch_copy_to_user
   arch_freq_scale
   arch_timer_read_counter
+  arch_touch_nmi_watchdog
   argv_free
   argv_split
   arm64_use_ng_mappings
@@ -2246,6 +2246,7 @@
   radix_tree_lookup
   radix_tree_next_chunk
   raise_softirq
+  random_kmalloc_seed
   ___ratelimit
   raw_notifier_call_chain
   raw_notifier_chain_register
@@ -2580,8 +2581,10 @@
   snd_ctl_add
   snd_ctl_boolean_mono_info
   snd_ctl_enum_info
+  snd_ctl_find_id
   snd_ctl_new1
   snd_ctl_notify
+  snd_ctl_remove
   snd_info_create_card_entry
   snd_jack_set_key
   snd_pcm_format_physical_width
@@ -2822,6 +2825,7 @@
   tcpm_sourcing_vbus
   tcpm_tcpc_reset
   tcpm_unregister_port
+  tcpm_update_sink_capabilities
   tcpm_vbus_change
   thermal_cdev_update
   thermal_cooling_device_register
