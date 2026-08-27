@@ -1729,6 +1729,7 @@ static int selinux_inode_check_tsec_flags(
 {
 	int rc;
 	struct selinux_state *s = &selinux_state;
+	bool inode_type_is_appdomain;
 	u32 inode_type;
 	u64 flags = cred_tsec_flags(cred);
 	u64 denied_flags = 0;
@@ -1746,7 +1747,9 @@ static int selinux_inode_check_tsec_flags(
 			// none of the DENY_EXEC_* flags are set
 			return 0;
 		}
-		rc = security_sid_to_context_type(isec->sid, &inode_type);
+		rc = security_sid_to_context_type_and_appdomain(isec->sid,
+								&inode_type,
+								&inode_type_is_appdomain);
 
 		if (rc) {
 			pr_warn("unknown type for sid %i, inode %lu\n", isec->sid, isec->inode->i_ino);
@@ -1768,6 +1771,10 @@ static int selinux_inode_check_tsec_flags(
 			DENY_FLAG(TSEC_FLAG_DENY_EXECUTE_ASHMEM_LIBCUTILS_DEVICE);
 		} else if (inode_type == s->types.privapp_data_file) {
 			DENY_FLAG(TSEC_FLAG_DENY_EXECUTE_PRIVAPP_DATA_FILE);
+		} else if (isec->sclass == SECCLASS_MEMFD_FILE &&
+			   inode_type_is_appdomain) {
+			/* Cover memfd_file objects labeled with an app domain type. */
+			DENY_FLAG(TSEC_FLAG_DENY_EXECUTE_APPDOMAIN_TMPFS);
 		} else {
 			return 0;
 		}

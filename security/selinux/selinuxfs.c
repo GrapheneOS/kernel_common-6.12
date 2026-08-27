@@ -559,6 +559,19 @@ static int resolve_context_type(struct selinux_load_state *lstate, const char *n
 	return 0;
 }
 
+static int resolve_type_attribute(struct selinux_load_state *lstate, const char *name,
+				  u32 *out_attribute)
+{
+	struct type_datum *typdatum = symtab_search(&lstate->policy->policydb.p_types, name);
+
+	if (!typdatum || !typdatum->attribute) {
+		pr_err("SELinux: missing type attribute for %s\n", name);
+		return -EINVAL;
+	}
+	*out_attribute = typdatum->value;
+	return 0;
+}
+
 static int resolve_context_types(struct selinux_load_state *lstate, struct context_types *types) {
 	int rc;
 
@@ -575,6 +588,11 @@ static int resolve_context_types(struct selinux_load_state *lstate, struct conte
 	RESOLVE_TYPE(zygote_next);
 
 #undef RESOLVE_TYPE
+
+	rc = resolve_type_attribute(lstate, "appdomain",
+				    &lstate->policy->appdomain_attr);
+	if (rc)
+		return rc;
 
 	return 0;
 }
@@ -627,7 +645,7 @@ static ssize_t sel_write_load(struct file *file, const char __user *buf,
 // don't cancel loading sepolicy because of missing context_types in microdroid sepolicy
 #if !IS_ENABLED(CONFIG_MICRODROID)
 		selinux_policy_cancel(&load_state);
-		goto out;
+		goto out_unlock;
 #endif
 	}
 

@@ -24,6 +24,7 @@ struct selinux_map {
 };
 
 struct selinux_policy {
+	u32 appdomain_attr;
 	struct sidtab *sidtab;
 	struct policydb policydb;
 	struct selinux_map map;
