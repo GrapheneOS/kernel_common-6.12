@@ -1383,8 +1383,8 @@ out_unlock:
 
 }
 
-// based on security_sid_to_context_core() above
-int security_sid_to_context_type(u32 sid, u32 *out)
+static int security_sid_to_context_type_core(u32 sid, u32 *out,
+					     bool *is_appdomain)
 {
 	struct selinux_policy *policy;
 	struct policydb *policydb;
@@ -1406,10 +1406,29 @@ int security_sid_to_context_type(u32 sid, u32 *out)
 	}
 
 	*out = entry->context.type;
+	if (is_appdomain) {
+		u32 attr = policy->appdomain_attr;
+
+		*is_appdomain = attr &&
+			ebitmap_get_bit(&policydb->type_attr_map_array[entry->context.type - 1],
+					attr - 1);
+	}
 
 out_unlock:
 	rcu_read_unlock();
 	return rc;
+}
+
+// based on security_sid_to_context_core() above
+int security_sid_to_context_type(u32 sid, u32 *out)
+{
+	return security_sid_to_context_type_core(sid, out, NULL);
+}
+
+int security_sid_to_context_type_and_appdomain(u32 sid, u32 *out,
+					       bool *is_appdomain)
+{
+	return security_sid_to_context_type_core(sid, out, is_appdomain);
 }
 
 /**
