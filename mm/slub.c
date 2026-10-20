@@ -785,7 +785,7 @@ static inline unsigned long get_orig_size(struct kmem_cache *s, void *object)
 #ifdef CONFIG_SLAB_CANARY
 static inline unsigned long *get_canary(struct kmem_cache *s, void *object)
 {
-	return object + get_info_end(s);
+	return kasan_reset_tag(object) + get_info_end(s);
 }
 
 static inline unsigned long get_canary_value(const void *canary, unsigned long value)
