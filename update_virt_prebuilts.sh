@@ -6,7 +6,7 @@ shopt -s nullglob
 KERNEL_VERSION="6.12"
 
 case ${ARCH:-} in
-        arm64) kernel_image=Image.gz; kernel_suffix=-gz ;;
+        arm64|arm64_16k) kernel_image=Image.gz; kernel_suffix=-gz ;;
         x86_64) kernel_image=bzImage; kernel_suffix= ;;
         *) echo "ARCH is undefined or unknown" >&2; exit 1 ;;
 esac
