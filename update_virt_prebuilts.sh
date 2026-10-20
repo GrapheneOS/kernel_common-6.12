@@ -29,6 +29,8 @@ GKI_MODULES_PATH="${PREBUILT_PATH}/gki_modules"
 VIRT_MODULES_PATH="${PREBUILT_PATH}/goldfish_modules"
 
 mkdir -p "${GKI_MODULES_PATH}" "${VIRT_MODULES_PATH}"
+# Do not retain modules from a different build or signing key.
+rm -f -- "${GKI_MODULES_PATH}"/*.ko "${VIRT_MODULES_PATH}"/*.ko
 cp "$@" -- "${common_modules[@]}" "${GKI_MODULES_PATH}/"
 cp "$@" -- "${virt_modules[@]}" "${VIRT_MODULES_PATH}/"
 cp "$@" -- "common_dist/${kernel_image}" "${PREBUILT_PATH}/kernel-${KERNEL_VERSION}${kernel_suffix}"
