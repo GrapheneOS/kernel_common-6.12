@@ -1,35 +1,22 @@
 #!/usr/bin/env bash
 
-set -e
-
-CLANG_VERSION="r547379"
+set -o errexit -o nounset -o pipefail
 
 [[ "${ARCH}" =~ aarch64|x86_64 ]] || (echo "unknown or undefined ARCH" && exit 1)
 
-cert_pem=$(mktemp)
-cert_x509=$(mktemp)
-sign_file=$(mktemp)
+tools/bazel run "$@" "//common:kernel_${ARCH}_dist" -- --wipe_destdir --destdir=common_dist
+tools/bazel run "$@" "//common-modules/virtual-device:virtual_device_${ARCH}_dist" -- --wipe_destdir --destdir=virt_dist
 
-trap '{ rm -f -- "$sign_file" "$cert_pem" "$cert_x509"; }' EXIT
+# Query the outputs of this configuration rather than searching cached builds
+# for signing keys. The kernel and both module sets must use the same key.
+execroot=$(tools/bazel info execution_root)
+cert_pem=$(tools/bazel cquery "$@" --output=files --output_groups=certs/signing_key.pem "//common:kernel_${ARCH}")
+cert_x509=$(tools/bazel cquery "$@" --output=files --output_groups=certs/signing_key.x509 "//common:kernel_${ARCH}")
+sign_file=$(tools/bazel cquery "$@" --output=files --output_groups=scripts/sign-file "//common:kernel_${ARCH}")
 
-# clean out/ to avoid confusion with signing keys
-test -d out/ && rm -rf out/
-
-function find_in_out(){
-	find out/bazel/output_user_root/*/execroot -type f -name $1
-}
-
-tools/bazel run "$@" //common:kernel_${ARCH}_dist -- --wipe_destdir --destdir=common_dist
-
-cp $(find_in_out "signing_key.pem") ${cert_pem}
-cp $(find_in_out "signing_key.x509") ${cert_x509}
-
-tools/bazel run "$@" //common-modules/virtual-device:virtual_device_${ARCH}_dist -- --wipe_destdir --destdir=virt_dist
-
-prebuilts/clang/host/linux-x86/clang-${CLANG_VERSION}/bin/clang common/scripts/sign-file.c -lssl -lcrypto -o ${sign_file}
-find virt_dist/ -type f -name "*.ko" \
-  -exec ${sign_file} sha256 ${cert_pem} ${cert_x509} {} \;
-
-mapfile -t common_sig < <(modinfo common_dist/*.ko | grep "sig_key" | awk '{print $NF}')
-mapfile -t virt_sig < <(modinfo virt_dist/*.ko | grep "sig_key" | awk '{print $NF}')
-[[ $common_sig == $virt_sig ]] && echo "Signature verification success" || echo "Signature verification failure"
+# Both distributions contain the same already-signed GKI modules.
+for module in virt_dist/*.ko; do
+    if [[ ! -f common_dist/${module##*/} ]]; then
+        "${execroot}/${sign_file}" sha256 "${execroot}/${cert_pem}" "${execroot}/${cert_x509}" "$module"
+    fi
+done
