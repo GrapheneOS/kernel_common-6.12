@@ -45,8 +45,13 @@ static ulong ramoops_pmsg_size = MIN_MEM_SIZE;
 module_param_named(pmsg_size, ramoops_pmsg_size, ulong, 0400);
 MODULE_PARM_DESC(pmsg_size, "size of user space message log");
 
-static unsigned long long mem_address;
+static unsigned long long mem_address = ULLONG_MAX;
+#ifdef MODULE
 module_param_hw(mem_address, ullong, other, 0400);
+#else
+/* The built-in driver receives its read-only address from verified boot. */
+module_param(mem_address, ullong, 0400);
+#endif
 MODULE_PARM_DESC(mem_address,
 		"start of reserved RAM used to store oops/panic logs");
 
@@ -935,6 +940,12 @@ static void __init ramoops_register_dummy(void)
 	 */
 	if (!mem_size)
 		return;
+
+	/* Never interpret a missing or rejected address as physical address 0. */
+	if (mem_address == ULLONG_MAX) {
+		pr_err("memory address is missing or invalid\n");
+		return;
+	}
 
 	pr_info("using module parameters\n");
 
