@@ -289,10 +289,11 @@ static void audit_log_tsec_flag_denial_inner(const char *prefix, struct common_a
 	uid = __task_cred(cur)->uid;
 	tgid = task_tgid_nr(cur);
 	top_tgid_with_same_uid = tgid;
-	parent = cur->parent;
-	while (parent != NULL && uid_eq(__task_cred(parent)->uid, uid)) {
+	parent = rcu_dereference(cur->real_parent);
+	while (parent && parent != &init_task &&
+	       uid_eq(__task_cred(parent)->uid, uid)) {
 		top_tgid_with_same_uid = task_tgid_nr(parent);
-		parent = parent->parent;
+		parent = rcu_dereference(parent->real_parent);
 	}
 	rcu_read_unlock();
 
